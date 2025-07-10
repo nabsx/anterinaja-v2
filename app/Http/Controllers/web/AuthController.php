@@ -43,7 +43,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials, $request->has('remember'))) {
             $request->session()->regenerate();
-            
+
             $user = Auth::user();
             $user->updateLastLogin();
 
@@ -52,7 +52,7 @@ class AuthController extends Controller
             } elseif ($user->role === 'customer') {
                 return redirect()->route('customer.dashboard');
             }
-            
+
             return redirect()->route('dashboard');
         }
 
@@ -99,17 +99,15 @@ class AuthController extends Controller
         if ($request->role === 'driver') {
             Driver::create([
                 'user_id' => $user->id,
-                'vehicle_type' => $request->vehicle_type,
-                'vehicle_brand' => $request->vehicle_brand,
-                'vehicle_model' => $request->vehicle_model,
-                'vehicle_year' => $request->vehicle_year,
-                'vehicle_plate' => $request->vehicle_plate,
-                'license_number' => $request->license_number,
+                'vehicle_type' => $request->vehicle_type ?? 'motorcycle',
+                'vehicle_plate' => $request->vehicle_plate ?? 'TEMP-' . $user->id,
+                'license_number' => $request->license_number ?? 'TEMP-' . $user->id,
                 'is_verified' => false,
                 'is_online' => false,
                 'status' => 'offline',
                 'rating' => 5.00,
-                'balance' => 0,
+                'total_trips' => 0,
+                'balance' => 0.00,
             ]);
         }
 
@@ -127,7 +125,7 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        
+
         return redirect()->route('home')->with('success', 'Berhasil logout.');
     }
 }

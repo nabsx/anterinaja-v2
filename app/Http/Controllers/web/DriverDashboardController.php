@@ -23,7 +23,7 @@ class DriverDashboardController extends Controller
     {
         $user = Auth::user();
         $driver = $user->driver;
-        
+
         // Get recent orders
         $recentOrders = Order::where('driver_id', $driver->id)
             ->with('customer')
@@ -59,7 +59,7 @@ class DriverDashboardController extends Controller
     {
         $user = Auth::user();
         $driver = $user->driver;
-        
+
         $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:20|unique:users,phone,' . $user->id,
@@ -107,7 +107,7 @@ class DriverDashboardController extends Controller
     public function availableOrders()
     {
         $driver = Auth::user()->driver;
-        
+
         if (!$driver->is_verified) {
             return view('driver.available-orders')
                 ->with('error', 'Akun Anda belum terverifikasi. Silakan lengkapi dokumen terlebih dahulu.');
@@ -126,7 +126,7 @@ class DriverDashboardController extends Controller
     public function acceptOrder(Order $order)
     {
         $driver = Auth::user()->driver;
-        
+
         if ($order->status !== 'pending') {
             return back()->with('error', 'Pesanan sudah tidak tersedia.');
         }
@@ -161,7 +161,7 @@ class DriverDashboardController extends Controller
     public function earnings()
     {
         $driver = Auth::user()->driver;
-        
+
         $todayEarnings = Order::where('driver_id', $driver->id)
             ->where('status', 'completed')
             ->whereDate('completed_at', today())
@@ -190,7 +190,7 @@ class DriverDashboardController extends Controller
     {
         $driver = Auth::user()->driver;
         $documents = DriverDocument::where('driver_id', $driver->id)->get();
-        
+
         return view('driver.documents', compact('driver', 'documents'));
     }
 

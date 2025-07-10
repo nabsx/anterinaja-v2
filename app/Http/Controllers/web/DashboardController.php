@@ -22,14 +22,15 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
-        
+
         if ($user->role === 'driver') {
             return redirect()->route('driver.dashboard');
         } elseif ($user->role === 'customer') {
             return redirect()->route('customer.dashboard');
         }
-        
-        return view('dashboard.index', compact('user'));
+
+        // Corrected view path
+        return view('dashboard.index', ['user' => $user]);
     }
 
     public function calculateFare(Request $request)
@@ -44,13 +45,13 @@ class DashboardController extends Controller
             // Get coordinates from addresses (you might need to implement geocoding)
             $pickupCoords = $this->geocodeAddress($request->pickup_address);
             $destinationCoords = $this->geocodeAddress($request->destination_address);
-            
+
             if (!$pickupCoords || !$destinationCoords) {
                 return back()->with('error', 'Alamat tidak ditemukan. Silakan gunakan alamat yang lebih spesifik.');
             }
 
             $serviceType = $request->service_type ?? 'motorcycle';
-            
+
             $fareData = $this->fareService->calculate(
                 $pickupCoords['lat'],
                 $pickupCoords['lng'],
