@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'osrm' => [
+        'url' => env('OSRM_URL', 'http://router.project-osrm.org'),
+        'timeout' => env('OSRM_TIMEOUT', 30),
+    ],
+
 ];

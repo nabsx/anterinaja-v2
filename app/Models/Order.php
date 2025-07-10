@@ -40,6 +40,8 @@ class Order extends Model
         'distance_km' => 'decimal:2',
         'estimated_duration' => 'integer',
         'fare_amount' => 'integer',
+        'commission' => 'integer',
+        'driver_earning' => 'integer',
         'accepted_at' => 'datetime',
         'picked_up_at' => 'datetime',
         'completed_at' => 'datetime',

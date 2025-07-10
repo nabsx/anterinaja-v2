@@ -59,7 +59,9 @@ class OrderSeeder extends Seeder
                 $destinationLocation['lat'], $destinationLocation['lng']
             );
 
-            $fareAmount = 5000 + ($distance * 2000); // Base fare + distance fare
+            $driverEarning = 5000 + ($distance * 2000); // Base fare + distance fare
+            $commission = ceil($driverEarning * 0.10); // 10% dari total driverEarning
+            $fareAmount = $driverEarning + $commission; // Total yang dibayar customer
             $estimatedDuration = $distance * 3; // Rough estimate: 3 minutes per km
 
             $order = Order::create([
@@ -76,6 +78,8 @@ class OrderSeeder extends Seeder
                 'distance_km' => $distance,
                 'estimated_duration' => $estimatedDuration,
                 'fare_amount' => $fareAmount,
+                'commission' => $commission,
+                'driver_earning' => $driverEarning,
                 'notes' => $i % 3 == 0 ? 'Tolong jangan terlambat' : null,
                 'status' => $status,
                 'accepted_at' => in_array($status, ['accepted', 'driver_arrived', 'picked_up', 'in_progress', 'completed']) ? now()->subMinutes(rand(5, 60)) : null,
