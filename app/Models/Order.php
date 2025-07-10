@@ -4,66 +4,76 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'order_code',
-        'customer_id',
+        'order_number',
+        'user_id',
         'driver_id',
         'order_type',
         'pickup_address',
-        'pickup_latitude',
-        'pickup_longitude',
+        'pickup_lat',
+        'pickup_lng',
         'destination_address',
-        'destination_latitude',
-        'destination_longitude',
+        'destination_lat',
+        'destination_lng',
+        'vehicle_type',
         'distance_km',
-        'estimated_duration',
-        'fare_amount',
-        'notes',
+        'duration_minutes',
+        'estimated_fare',
+        'actual_fare',
+        'fare_breakdown',
         'status',
+        'notes',
+        'scheduled_at',
         'accepted_at',
+        'driver_arrived_at',
         'picked_up_at',
+        'started_at',
         'completed_at',
         'cancelled_at',
+        'cancelled_by',
+        'cancellation_reason',
+        'driver_earning',
+        'platform_commission',
     ];
 
     protected $casts = [
-        'pickup_latitude' => 'decimal:7',
-        'pickup_longitude' => 'decimal:7',
-        'destination_latitude' => 'decimal:7',
-        'destination_longitude' => 'decimal:7',
+        'pickup_lat' => 'decimal:8',
+        'pickup_lng' => 'decimal:8',
+        'destination_lat' => 'decimal:8',
+        'destination_lng' => 'decimal:8',
         'distance_km' => 'decimal:2',
-        'estimated_duration' => 'integer',
-        'fare_amount' => 'integer',
-        'commission' => 'integer',
-        'driver_earning' => 'integer',
+        'duration_minutes' => 'decimal:2',
+        'estimated_fare' => 'decimal:2',
+        'actual_fare' => 'decimal:2',
+        'driver_earning' => 'decimal:2',
+        'platform_commission' => 'decimal:2',
+        'fare_breakdown' => 'array',
+        'scheduled_at' => 'datetime',
         'accepted_at' => 'datetime',
+        'driver_arrived_at' => 'datetime',
         'picked_up_at' => 'datetime',
+        'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
 
-    // Boot method untuk auto generate order code
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($order) {
-            if (!$order->order_code) {
-                $order->order_code = 'ANTER-' . strtoupper(Str::random(8));
-            }
-        });
-    }
+    protected $dates = ['deleted_at'];
 
     // Relationships
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function customer()
     {
-        return $this->belongsTo(User::class, 'customer_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function driver()
@@ -97,102 +107,78 @@ class Order extends Model
         return $query->where('status', 'accepted');
     }
 
+    public function scopeInProgress($query)
+    {
+        return $query->where('status', 'in_progress');
+    }
+
     public function scopeCompleted($query)
     {
         return $query->where('status', 'completed');
     }
 
-    public function scopeRideOrders($query)
+    public function scopeCancelled($query)
     {
-        return $query->where('order_type', 'ride');
+        return $query->where('status', 'cancelled');
     }
 
-    public function scopeDeliveryOrders($query)
+    public function scopeToday($query)
     {
-        return $query->where('order_type', 'delivery');
+        return $query->whereDate('created_at', today());
     }
 
-    public function scopeByCustomer($query, $customerId)
+    public function scopeThisWeek($query)
     {
-        return $query->where('customer_id', $customerId);
+        return $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]);
     }
 
-    public function scopeByDriver($query, $driverId)
+    public function scopeThisMonth($query)
     {
-        return $query->where('driver_id', $driverId);
+        return $query->whereMonth('created_at', now()->month)
+                    ->whereYear('created_at', now()->year);
+    }
+
+    // Accessors
+    public function getStatusLabelAttribute()
+    {
+        $labels = [
+            'pending' => 'Menunggu Driver',
+            'accepted' => 'Diterima Driver',
+            'driver_arrived' => 'Driver Tiba',
+            'picked_up' => 'Diambil',
+            'in_progress' => 'Dalam Perjalanan',
+            'completed' => 'Selesai',
+            'cancelled' => 'Dibatalkan',
+        ];
+
+        return $labels[$this->status] ?? $this->status;
+    }
+
+    public function getFormattedFareAttribute()
+    {
+        return 'Rp ' . number_format($this->estimated_fare, 0, ',', '.');
+    }
+
+    public function getFormattedDistanceAttribute()
+    {
+        return $this->distance_km . ' km';
+    }
+
+    public function getFormattedDurationAttribute()
+    {
+        return $this->duration_minutes . ' menit';
     }
 
     // Methods
-    public function accept($driverId)
-    {
-        $this->update([
-            'driver_id' => $driverId,
-            'status' => 'accepted',
-            'accepted_at' => now(),
-        ]);
-
-        $this->addTracking('accepted', 'Order accepted by driver');
-    }
-
-    public function pickup()
-    {
-        $this->update([
-            'status' => 'picked_up',
-            'picked_up_at' => now(),
-        ]);
-
-        $this->addTracking('picked_up', 'Customer/item picked up');
-    }
-
-    public function complete()
-    {
-        $this->update([
-            'status' => 'completed',
-            'completed_at' => now(),
-        ]);
-
-        $this->addTracking('completed', 'Order completed');
-        
-        // Update driver stats
-        if ($this->driver) {
-            $this->driver->increment('total_trips');
-            $this->driver->setAvailable();
-        }
-    }
-
-    public function cancel($reason = null)
-    {
-        $this->update([
-            'status' => 'cancelled',
-            'cancelled_at' => now(),
-        ]);
-
-        $this->addTracking('cancelled', $reason ?: 'Order cancelled');
-
-        // Set driver back to available
-        if ($this->driver) {
-            $this->driver->setAvailable();
-        }
-    }
-
     public function addTracking($status, $notes = null, $lat = null, $lng = null)
     {
-        $this->trackings()->create([
+        return $this->trackings()->create([
             'status' => $status,
             'notes' => $notes,
             'latitude' => $lat,
             'longitude' => $lng,
+            'tracked_at' => now(),
         ]);
-    }
-
-    public function isRide()
-    {
-        return $this->order_type === 'ride';
-    }
-
-    public function isDelivery()
-    {
-        return $this->order_type === 'delivery';
     }
 
     public function isPending()
@@ -205,6 +191,11 @@ class Order extends Model
         return $this->status === 'accepted';
     }
 
+    public function isInProgress()
+    {
+        return $this->status === 'in_progress';
+    }
+
     public function isCompleted()
     {
         return $this->status === 'completed';
@@ -215,18 +206,51 @@ class Order extends Model
         return $this->status === 'cancelled';
     }
 
-    public function getStatusLabelAttribute()
+    public function canBeCancelled()
     {
-        $statusLabels = [
-            'pending' => 'Menunggu Driver',
-            'accepted' => 'Driver Menuju Lokasi',
-            'driver_arrived' => 'Driver Telah Tiba',
-            'picked_up' => 'Dalam Perjalanan',
-            'in_progress' => 'Sedang Berlangsung',
-            'completed' => 'Selesai',
-            'cancelled' => 'Dibatalkan',
-        ];
+        return in_array($this->status, ['pending', 'accepted', 'driver_arrived']);
+    }
 
-        return $statusLabels[$this->status] ?? $this->status;
+    public function canBeRated()
+    {
+        return $this->status === 'completed' && !$this->ratings()->exists();
+    }
+
+    public function calculateActualFare()
+    {
+        // Override with actual calculation if needed
+        return $this->estimated_fare;
+    }
+
+    public function updateStatus($status, $additionalData = [])
+    {
+        $updateData = array_merge(['status' => $status], $additionalData);
+        
+        switch ($status) {
+            case 'accepted':
+                $updateData['accepted_at'] = now();
+                break;
+            case 'driver_arrived':
+                $updateData['driver_arrived_at'] = now();
+                break;
+            case 'picked_up':
+                $updateData['picked_up_at'] = now();
+                break;
+            case 'in_progress':
+                $updateData['started_at'] = now();
+                break;
+            case 'completed':
+                $updateData['completed_at'] = now();
+                if (!isset($updateData['actual_fare'])) {
+                    $updateData['actual_fare'] = $this->calculateActualFare();
+                }
+                break;
+            case 'cancelled':
+                $updateData['cancelled_at'] = now();
+                break;
+        }
+
+        $this->update($updateData);
+        $this->addTracking($status, $additionalData['notes'] ?? null);
     }
 }

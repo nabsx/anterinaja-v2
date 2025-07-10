@@ -4,35 +4,49 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Driver extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'user_id',
         'vehicle_type',
+        'vehicle_brand',
+        'vehicle_model',
+        'vehicle_year',
         'vehicle_plate',
         'license_number',
         'is_verified',
-        'current_latitude',
-        'current_longitude',
         'is_online',
         'status',
+        'current_latitude',
+        'current_longitude',
+        'last_active_at',
         'rating',
         'total_trips',
-        'last_active_at',
+        'balance',
+        'emergency_contact_name',
+        'emergency_contact_phone',
+        'verification_notes',
+        'verified_at',
+        'verified_by',
     ];
 
     protected $casts = [
         'is_verified' => 'boolean',
         'is_online' => 'boolean',
-        'current_latitude' => 'decimal:7',
-        'current_longitude' => 'decimal:7',
+        'current_latitude' => 'decimal:8',
+        'current_longitude' => 'decimal:8',
         'rating' => 'decimal:2',
-        'total_trips' => 'integer',
+        'balance' => 'decimal:2',
         'last_active_at' => 'datetime',
+        'verified_at' => 'datetime',
+        'vehicle_year' => 'integer',
     ];
+
+    protected $dates = ['deleted_at'];
 
     // Relationships
     public function user()
@@ -55,25 +69,35 @@ class Driver extends Model
         return $this->hasMany(Rating::class);
     }
 
-    public function vehicleType()
-    {
-        return $this->belongsTo(VehicleType::class, 'vehicle_type', 'name');
-    }
-
     // Scopes
     public function scopeOnline($query)
     {
         return $query->where('is_online', true);
     }
 
+    public function scopeOffline($query)
+    {
+        return $query->where('is_online', false);
+    }
+
     public function scopeAvailable($query)
     {
-        return $query->where('status', 'available')->where('is_online', true);
+        return $query->where('status', 'available');
+    }
+
+    public function scopeBusy($query)
+    {
+        return $query->where('status', 'busy');
     }
 
     public function scopeVerified($query)
     {
         return $query->where('is_verified', true);
+    }
+
+    public function scopeUnverified($query)
+    {
+        return $query->where('is_verified', false);
     }
 
     public function scopeNearby($query, $lat, $lng, $radiusKm = 5)
@@ -85,6 +109,34 @@ class Driver extends Model
             ) <= ?",
             [$lng, $lat, $radiusKm * 1000]
         );
+    }
+
+    // Accessors
+    public function getVehicleInfoAttribute()
+    {
+        return "{$this->vehicle_brand} {$this->vehicle_model} ({$this->vehicle_year})";
+    }
+
+    public function getStatusLabelAttribute()
+    {
+        $labels = [
+            'offline' => 'Offline',
+            'available' => 'Tersedia',
+            'busy' => 'Sibuk',
+            'inactive' => 'Tidak Aktif',
+        ];
+
+        return $labels[$this->status] ?? $this->status;
+    }
+
+    public function getFormattedRatingAttribute()
+    {
+        return number_format($this->rating, 1);
+    }
+
+    public function getFormattedBalanceAttribute()
+    {
+        return 'Rp ' . number_format($this->balance, 0, ',', '.');
     }
 
     // Methods
@@ -139,16 +191,68 @@ class Driver extends Model
             return null;
         }
 
+        // Haversine formula
         $earthRadius = 6371; // km
-        $latDiff = deg2rad($lat - $this->current_latitude);
-        $lngDiff = deg2rad($lng - $this->current_longitude);
-        
-        $a = sin($latDiff / 2) * sin($latDiff / 2) +
-            cos(deg2rad($this->current_latitude)) * cos(deg2rad($lat)) *
-            sin($lngDiff / 2) * sin($lngDiff / 2);
-        
+
+        $latDelta = deg2rad($lat - $this->current_latitude);
+        $lngDelta = deg2rad($lng - $this->current_longitude);
+
+        $a = sin($latDelta / 2) * sin($latDelta / 2) +
+             cos(deg2rad($this->current_latitude)) * cos(deg2rad($lat)) *
+             sin($lngDelta / 2) * sin($lngDelta / 2);
+
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-        
+
         return $earthRadius * $c;
+    }
+
+    public function addBalance($amount)
+    {
+        $this->increment('balance', $amount);
+    }
+
+    public function deductBalance($amount)
+    {
+        if ($this->balance >= $amount) {
+            $this->decrement('balance', $amount);
+            return true;
+        }
+        return false;
+    }
+
+    public function incrementTrips()
+    {
+        $this->increment('total_trips');
+    }
+
+    public function isActive()
+    {
+        return $this->last_active_at && $this->last_active_at->diffInMinutes(now()) <= 30;
+    }
+
+    public function verify($notes = null, $verifiedBy = null)
+    {
+        $this->update([
+            'is_verified' => true,
+            'verified_at' => now(),
+            'verification_notes' => $notes,
+            'verified_by' => $verifiedBy,
+        ]);
+    }
+
+    public function reject($notes = null)
+    {
+        $this->update([
+            'is_verified' => false,
+            'verification_notes' => $notes,
+        ]);
+    }
+
+    public function hasRequiredDocuments()
+    {
+        $requiredTypes = ['ktp', 'sim', 'stnk', 'photo'];
+        $uploadedTypes = $this->documents()->pluck('document_type')->toArray();
+        
+        return count(array_intersect($requiredTypes, $uploadedTypes)) === count($requiredTypes);
     }
 }

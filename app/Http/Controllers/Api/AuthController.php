@@ -9,7 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
-use Laravel\Sanctum\HasApiTokens;
 
 class AuthController extends Controller
 {
@@ -22,12 +21,17 @@ class AuthController extends Controller
             $validator = Validator::make($request->all(), [
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:6|confirmed',
                 'phone' => 'required|string|max:20|unique:users',
-                'password' => 'required|string|min:8|confirmed',
                 'role' => 'required|in:customer,driver',
-                'vehicle_type' => 'required_if:role,driver|in:motorcycle,car',
-                'vehicle_plate' => 'required_if:role,driver|string|max:20|unique:drivers',
-                'license_number' => 'required_if:role,driver|string|max:50|unique:drivers',
+                
+                // Driver specific fields
+                'vehicle_type' => 'required_if:role,driver|in:motorcycle,car,van,truck',
+                'vehicle_brand' => 'required_if:role,driver|string|max:100',
+                'vehicle_model' => 'required_if:role,driver|string|max:100',
+                'vehicle_year' => 'required_if:role,driver|integer|min:1990|max:' . date('Y'),
+                'vehicle_plate' => 'required_if:role,driver|string|max:20',
+                'license_number' => 'required_if:role,driver|string|max:50',
             ]);
 
             if ($validator->fails()) {
@@ -42,10 +46,11 @@ class AuthController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'phone' => $request->phone,
                 'password' => Hash::make($request->password),
+                'phone' => $request->phone,
                 'role' => $request->role,
                 'is_active' => true,
+                'email_verified_at' => now(), // Auto verify for now
             ]);
 
             // Create driver profile if role is driver
@@ -53,11 +58,17 @@ class AuthController extends Controller
                 Driver::create([
                     'user_id' => $user->id,
                     'vehicle_type' => $request->vehicle_type,
+                    'vehicle_brand' => $request->vehicle_brand,
+                    'vehicle_model' => $request->vehicle_model,
+                    'vehicle_year' => $request->vehicle_year,
                     'vehicle_plate' => $request->vehicle_plate,
                     'license_number' => $request->license_number,
                     'is_verified' => false,
                     'is_online' => false,
                     'status' => 'offline',
+                    'rating' => 5.0,
+                    'total_trips' => 0,
+                    'balance' => 0,
                 ]);
             }
 
@@ -102,22 +113,20 @@ class AuthController extends Controller
                 ], 422);
             }
 
-            // Check credentials
-            if (!Auth::attempt($request->only('email', 'password'))) {
+            $user = User::where('email', $request->email)->first();
+
+            if (!$user || !Hash::check($request->password, $user->password)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid credentials'
                 ], 401);
             }
 
-            $user = Auth::user();
-
-            // Check if user is active
             if (!$user->is_active) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Account is deactivated'
-                ], 403);
+                    'message' => 'Account is inactive'
+                ], 401);
             }
 
             // Create token
@@ -148,7 +157,6 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         try {
-            // Revoke current token
             $request->user()->currentAccessToken()->delete();
 
             return response()->json([
@@ -166,7 +174,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Get authenticated user
+     * Get current user
      */
     public function me(Request $request)
     {
@@ -195,7 +203,7 @@ class AuthController extends Controller
         try {
             $user = $request->user();
             
-            // Revoke current token
+            // Delete current token
             $request->user()->currentAccessToken()->delete();
             
             // Create new token
@@ -214,6 +222,52 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Token refresh failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Change password
+     */
+    public function changePassword(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'current_password' => 'required|string',
+                'new_password' => 'required|string|min:6|confirmed',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $user = $request->user();
+
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Current password is incorrect'
+                ], 400);
+            }
+
+            $user->update([
+                'password' => Hash::make($request->new_password)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Password changed successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Password change failed',
                 'error' => $e->getMessage()
             ], 500);
         }

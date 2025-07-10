@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 
@@ -18,9 +17,11 @@ class ProfileController extends Controller
         try {
             $user = $request->user();
             
+            $profile = $user->load($user->role === 'driver' ? ['driver.documents', 'driver.ratings'] : []);
+
             return response()->json([
                 'success' => true,
-                'data' => $user->load($user->role === 'driver' ? 'driver' : [])
+                'data' => $profile
             ]);
 
         } catch (\Exception $e) {
@@ -39,12 +40,16 @@ class ProfileController extends Controller
     {
         try {
             $user = $request->user();
-
+            
             $validator = Validator::make($request->all(), [
                 'name' => 'sometimes|string|max:255',
-                'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
                 'phone' => 'sometimes|string|max:20|unique:users,phone,' . $user->id,
-                'profile_picture' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
+                'avatar' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
+                'address' => 'sometimes|string|max:500',
+                'city' => 'sometimes|string|max:100',
+                'postal_code' => 'sometimes|string|max:10',
+                'date_of_birth' => 'sometimes|date|before:today',
+                'gender' => 'sometimes|in:male,female,other',
             ]);
 
             if ($validator->fails()) {
@@ -55,17 +60,19 @@ class ProfileController extends Controller
                 ], 422);
             }
 
-            $updateData = $request->only(['name', 'email', 'phone']);
+            $updateData = $request->only([
+                'name', 'phone', 'address', 'city', 'postal_code', 'date_of_birth', 'gender'
+            ]);
 
-            // Handle profile picture upload
-            if ($request->hasFile('profile_picture')) {
-                // Delete old profile picture
-                if ($user->profile_picture) {
-                    Storage::disk('public')->delete($user->profile_picture);
+            // Handle avatar upload
+            if ($request->hasFile('avatar')) {
+                // Delete old avatar if exists
+                if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                    Storage::disk('public')->delete($user->avatar);
                 }
 
-                $path = $request->file('profile_picture')->store('profile_pictures', 'public');
-                $updateData['profile_picture'] = $path;
+                $path = $request->file('avatar')->store('avatars', 'public');
+                $updateData['avatar'] = $path;
             }
 
             $user->update($updateData);
@@ -73,7 +80,7 @@ class ProfileController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Profile updated successfully',
-                'data' => $user->fresh()->load($user->role === 'driver' ? 'driver' : [])
+                'data' => $user->fresh()
             ]);
 
         } catch (\Exception $e) {
@@ -86,14 +93,29 @@ class ProfileController extends Controller
     }
 
     /**
-     * Change password
+     * Update driver profile (for drivers only)
      */
-    public function changePassword(Request $request)
+    public function updateDriverProfile(Request $request)
     {
         try {
+            $user = $request->user();
+
+            if ($user->role !== 'driver') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Access denied. Driver role required.'
+                ], 403);
+            }
+
             $validator = Validator::make($request->all(), [
-                'current_password' => 'required|string',
-                'new_password' => 'required|string|min:8|confirmed',
+                'vehicle_type' => 'sometimes|in:motorcycle,car,van,truck',
+                'vehicle_brand' => 'sometimes|string|max:100',
+                'vehicle_model' => 'sometimes|string|max:100',
+                'vehicle_year' => 'sometimes|integer|min:1990|max:' . date('Y'),
+                'vehicle_plate' => 'sometimes|string|max:20',
+                'license_number' => 'sometimes|string|max:50',
+                'emergency_contact_name' => 'sometimes|string|max:255',
+                'emergency_contact_phone' => 'sometimes|string|max:20',
             ]);
 
             if ($validator->fails()) {
@@ -104,43 +126,39 @@ class ProfileController extends Controller
                 ], 422);
             }
 
-            $user = $request->user();
-
-            // Check current password
-            if (!Hash::check($request->current_password, $user->password)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Current password is incorrect'
-                ], 400);
-            }
-
-            // Update password
-            $user->update([
-                'password' => Hash::make($request->new_password)
+            $driver = $user->driver;
+            
+            $updateData = $request->only([
+                'vehicle_type', 'vehicle_brand', 'vehicle_model', 'vehicle_year',
+                'vehicle_plate', 'license_number', 'emergency_contact_name', 'emergency_contact_phone'
             ]);
+
+            $driver->update($updateData);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Password changed successfully'
+                'message' => 'Driver profile updated successfully',
+                'data' => $driver->fresh()
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to change password',
+                'message' => 'Failed to update driver profile',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Delete account
+     * Delete user account
      */
-    public function deleteAccount(Request $request)
+    public function destroy(Request $request)
     {
         try {
             $validator = Validator::make($request->all(), [
                 'password' => 'required|string',
+                'confirmation' => 'required|string|in:DELETE',
             ]);
 
             if ($validator->fails()) {
@@ -153,7 +171,6 @@ class ProfileController extends Controller
 
             $user = $request->user();
 
-            // Check password
             if (!Hash::check($request->password, $user->password)) {
                 return response()->json([
                     'success' => false,
@@ -161,20 +178,23 @@ class ProfileController extends Controller
                 ], 400);
             }
 
-            // Delete profile picture
-            if ($user->profile_picture) {
-                Storage::disk('public')->delete($user->profile_picture);
+            // Delete avatar if exists
+            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
             }
 
-            // Revoke all tokens
+            // Delete all tokens
             $user->tokens()->delete();
 
-            // Soft delete or deactivate user
-            $user->update(['is_active' => false]);
+            // Soft delete user
+            $user->update([
+                'is_active' => false,
+                'deleted_at' => now()
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Account deactivated successfully'
+                'message' => 'Account deleted successfully'
             ]);
 
         } catch (\Exception $e) {
