@@ -63,6 +63,7 @@ class DriverSeeder extends Seeder
                 'rating' => rand(350, 500) / 100, // Random rating between 3.5 - 5.0
                 'total_trips' => rand(10, 500),
                 'last_active_at' => now()->subMinutes(rand(0, 60)),
+                'balance' => rand(10000, 100000), // Seed saldo acak antara 10.000 - 100.000
             ]);
 
             // Create driver documents
@@ -95,6 +96,7 @@ class DriverSeeder extends Seeder
                 'rating' => rand(300, 500) / 100,
                 'total_trips' => rand(0, 200),
                 'last_active_at' => now()->subMinutes(rand(0, 1440)), // Random within last 24 hours
+                'balance' => rand(10000, 100000), // Seed saldo acak antara 10.000 - 100.000
             ]);
 
             // Create some documents for random drivers

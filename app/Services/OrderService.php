@@ -148,6 +148,16 @@ class OrderService
                     if (isset($additionalData['actual_fare'])) {
                         $updateData['actual_fare'] = $additionalData['actual_fare'];
                     }
+                    // Potong komisi 10%
+                    $commission = round($order->estimated_fare * 0.10); // 10%
+                    $driver = $order->driver;
+
+                    if ($driver && $driver->balance >= $commission) {
+                        $driver->balance -= $commission;
+                        $driver->save();
+                    } else {
+                        throw new \Exception('Saldo driver tidak mencukupi untuk dipotong komisi.');
+                    }
                     break;
 
                 case 'cancelled':
