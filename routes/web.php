@@ -45,6 +45,7 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::get('/profile', [CustomerDashboardController::class, 'profile'])->name('customer.profile');
         Route::put('/profile', [CustomerDashboardController::class, 'updateProfile'])->name('customer.profile.update');
         Route::get('/orders', [CustomerDashboardController::class, 'orders'])->name('customer.orders');
+        Route::post('/calculate-fare', [CustomerDashboardController::class, 'calculateFare'])->name('calculate-fare');
         Route::get('/orders/{order}', [CustomerDashboardController::class, 'orderDetail'])->name('customer.orders.show');
         Route::post('/orders', [CustomerDashboardController::class, 'createOrder'])->name('customer.orders.create');
         Route::put('/orders/{order}/cancel', [CustomerDashboardController::class, 'cancelOrder'])->name('customer.orders.cancel');

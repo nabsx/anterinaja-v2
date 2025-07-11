@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Driver;
 use App\Services\OrderService;
 use App\Services\FareCalculationService;
+use App\Services\OSRMService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,11 +15,13 @@ class CustomerDashboardController extends Controller
 {
     protected $orderService;
     protected $fareService;
+    protected $osrmService;
 
-    public function __construct(OrderService $orderService, FareCalculationService $fareService)
+    public function __construct(OrderService $orderService, FareCalculationService $fareService, OSRMService $osrmService)
     {
         $this->orderService = $orderService;
         $this->fareService = $fareService;
+        $this->osrmService = $osrmService;
     }
 
     public function index()
@@ -93,48 +96,128 @@ class CustomerDashboardController extends Controller
         return view('customer.book-ride');
     }
 
+    /**
+     * Calculate fare estimation (AJAX endpoint)
+     */
+    public function calculateFare(Request $request)
+    {
+        $request->validate([
+            'pickup_latitude' => 'required|numeric|between:-90,90',
+            'pickup_longitude' => 'required|numeric|between:-180,180',
+            'destination_latitude' => 'required|numeric|between:-90,90',
+            'destination_longitude' => 'required|numeric|between:-180,180',
+            'service_type' => 'required|in:motorcycle,car,van,truck',
+        ]);
+
+        try {
+            // Step 1: Get distance and duration from OSRM
+            $routeData = $this->osrmService->getDistanceAndDuration(
+                $request->pickup_latitude,
+                $request->pickup_longitude,
+                $request->destination_latitude,
+                $request->destination_longitude
+            );
+
+            if (!$routeData['success']) {
+                throw new \Exception('Gagal mendapatkan rute: ' . ($routeData['error'] ?? 'Route tidak ditemukan'));
+            }
+
+            // Step 2: Calculate fare using the correct method name
+            $fareData = $this->fareService->calculateFare(
+                $routeData['distance_km'],
+                $routeData['duration_minutes'],
+                $request->service_type,
+                $this->fareService->getCurrentConditions()
+            );
+
+            if (!$fareData['success']) {
+                throw new \Exception('Gagal menghitung tarif: ' . ($fareData['error'] ?? 'Perhitungan gagal'));
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total_fare' => $fareData['data']['total'],
+                    'distance' => $routeData['distance_km'],
+                    'duration' => $routeData['duration_minutes'],
+                    'base_fare' => $fareData['data']['base_fare'],
+                    'distance_fare' => $fareData['data']['distance_fare'],
+                    'time_fare' => $fareData['data']['time_fare'],
+                    'subtotal' => $fareData['data']['subtotal'],
+                    'surcharges' => $fareData['data']['surcharges'],
+                    'total_surcharge' => $fareData['data']['total_surcharge'],
+                    'formatted_fare' => 'Rp ' . number_format($fareData['data']['total'], 0, ',', '.'),
+                    'formatted_distance' => number_format($routeData['distance_km'], 2) . ' km',
+                    'formatted_duration' => ceil($routeData['duration_minutes']) . ' menit',
+                    'breakdown' => $fareData['data']['breakdown']
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            // Log error untuk debugging
+            \Log::error('Fare calculation failed: ' . $e->getMessage(), [
+                'pickup_lat' => $request->pickup_latitude,
+                'pickup_lng' => $request->pickup_longitude,
+                'dest_lat' => $request->destination_latitude,
+                'dest_lng' => $request->destination_longitude,
+                'service_type' => $request->service_type,
+                'error' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghitung tarif. Silakan coba lagi.',
+                'error' => config('app.debug') ? $e->getMessage() : 'Terjadi kesalahan sistem'
+            ], 500);
+        }
+    }
+
     public function createOrder(Request $request)
     {
         $request->validate([
             'pickup_address' => 'required|string',
-            'pickup_latitude' => 'required|numeric',
-            'pickup_longitude' => 'required|numeric',
+            'pickup_latitude' => 'required|numeric|between:-90,90',
+            'pickup_longitude' => 'required|numeric|between:-180,180',
             'destination_address' => 'required|string',
-            'destination_latitude' => 'required|numeric',
-            'destination_longitude' => 'required|numeric',
-            'service_type' => 'required|in:motorcycle,car',
+            'destination_latitude' => 'required|numeric|between:-90,90',
+            'destination_longitude' => 'required|numeric|between:-180,180',
+            'service_type' => 'required|in:motorcycle,car,van,truck',
             'notes' => 'nullable|string|max:255',
         ]);
-
+        
         try {
-            $fare = $this->fareService->calculate(
-                $request->pickup_latitude,
-                $request->pickup_longitude,
-                $request->destination_latitude,
-                $request->destination_longitude,
-                $request->service_type
-            );
-
-            $order = $this->orderService->createOrder([
-                'customer_id' => Auth::id(),
+            // Use OrderService directly - it handles OSRM and fare calculation internally
+            $result = $this->orderService->createOrder(Auth::id(), [
                 'pickup_address' => $request->pickup_address,
-                'pickup_latitude' => $request->pickup_latitude,
-                'pickup_longitude' => $request->pickup_longitude,
+                'pickup_lat' => $request->pickup_latitude,
+                'pickup_lng' => $request->pickup_longitude,
                 'destination_address' => $request->destination_address,
-                'destination_latitude' => $request->destination_latitude,
-                'destination_longitude' => $request->destination_longitude,
-                'service_type' => $request->service_type,
-                'estimated_fare' => $fare['total_fare'],
-                'distance' => $fare['distance'],
-                'estimated_duration' => $fare['duration'],
+                'destination_lat' => $request->destination_latitude,
+                'destination_lng' => $request->destination_longitude,
+                'vehicle_type' => $request->service_type,
                 'notes' => $request->notes,
             ]);
 
-            return redirect()->route('customer.orders.show', $order)
+            if (!$result['success']) {
+                throw new \Exception($result['error']);
+            }
+
+            return redirect()->route('customer.orders.show', $result['data']->id)
                 ->with('success', 'Pesanan berhasil dibuat! Mencari driver...');
 
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal membuat pesanan. Silakan coba lagi.');
+            // Log error detail
+            \Log::error('Create order failed: ' . $e->getMessage(), [
+                'user_id' => Auth::id(),
+                'pickup_lat' => $request->pickup_latitude,
+                'pickup_lng' => $request->pickup_longitude,
+                'dest_lat' => $request->destination_latitude,
+                'dest_lng' => $request->destination_longitude,
+                'service_type' => $request->service_type,
+                'error' => $e->getTraceAsString()
+            ]);
+
+            return back()->withInput()->with('error', 'Gagal membuat pesanan: ' . $e->getMessage());
         }
     }
 
@@ -148,10 +231,14 @@ class CustomerDashboardController extends Controller
             return back()->with('error', 'Pesanan tidak dapat dibatalkan.');
         }
 
-        $this->orderService->cancelOrder($order, 'Dibatalkan oleh customer');
+        $result = $this->orderService->cancelOrder($order->id, 'Dibatalkan oleh customer', 'customer');
 
-        return redirect()->route('customer.orders')
-            ->with('success', 'Pesanan berhasil dibatalkan.');
+        if ($result['success']) {
+            return redirect()->route('customer.orders')
+                ->with('success', 'Pesanan berhasil dibatalkan.');
+        }
+
+        return back()->with('error', 'Gagal membatalkan pesanan.');
     }
 
     public function rateOrder(Request $request, Order $order)

@@ -42,7 +42,7 @@ class OrderService
             );
 
             if (!$routeData['success']) {
-                throw new \Exception('Unable to calculate route');
+                throw new \Exception('Unable to calculate route: ' . ($routeData['error'] ?? 'Route calculation failed'));
             }
 
             // Calculate fare
@@ -54,18 +54,18 @@ class OrderService
             );
 
             if (!$fareData['success']) {
-                throw new \Exception('Unable to calculate fare');
+                throw new \Exception('Unable to calculate fare: ' . ($fareData['error'] ?? 'Fare calculation failed'));
             }
 
-            // Komisi 10%
+            // Komisi platform
             $driverFare = $fareData['data']['total'];
-            $platformCommission = round($driverFare * 0.10); // 10%
+            $platformCommission = round($driverFare * config('fare.platform_commission', 0.10));
             $customerFare = $driverFare + $platformCommission;
 
             // Create order
             $order = Order::create([
-                'order_number' => $this->generateOrderNumber(),
-                'user_id' => $userId,
+                'order_code' => $this->generateOrderNumber(),
+                'customer_id' => $customerId,
                 'pickup_address' => $orderData['pickup_address'],
                 'pickup_lat' => $orderData['pickup_lat'],
                 'pickup_lng' => $orderData['pickup_lng'],
@@ -77,12 +77,16 @@ class OrderService
                 'duration_minutes' => $routeData['duration_minutes'],
                 'estimated_fare' => $customerFare,
                 'fare_breakdown' => json_encode([
-                    'base' => $fareData['data']['base'],
-                    'distance' => $fareData['data']['distance'],
-                    'duration' => $fareData['data']['duration'],
+                    'base_fare' => $fareData['data']['base_fare'],
+                    'distance_fare' => $fareData['data']['distance_fare'],
+                    'time_fare' => $fareData['data']['time_fare'],
+                    'subtotal' => $fareData['data']['subtotal'],
+                    'surcharges' => $fareData['data']['surcharges'],
+                    'total_surcharge' => $fareData['data']['total_surcharge'],
                     'total_driver' => $driverFare,
                     'commission' => $platformCommission,
                     'total_customer' => $customerFare,
+                    'breakdown' => $fareData['data']['breakdown']
                 ]),
                 'status' => 'pending',
                 'notes' => $orderData['notes'] ?? null,
@@ -104,7 +108,11 @@ class OrderService
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Order Creation Error: ' . $e->getMessage());
+            Log::error('Order Creation Error: ' . $e->getMessage(), [
+                'user_id' => $userId,
+                'order_data' => $orderData,
+                'trace' => $e->getTraceAsString()
+            ]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -148,15 +156,16 @@ class OrderService
                     if (isset($additionalData['actual_fare'])) {
                         $updateData['actual_fare'] = $additionalData['actual_fare'];
                     }
-                    // Potong komisi 10%
-                    $commission = round($order->estimated_fare * 0.10); // 10%
+                    
+                    // Potong komisi platform
+                    $commission = round($order->estimated_fare * config('fare.platform_commission', 0.10));
                     $driver = $order->driver;
 
-                    if ($driver && $driver->balance >= $commission) {
-                        $driver->balance -= $commission;
+                    if ($driver) {
+                        // Add fare to driver balance minus commission
+                        $driverEarning = $order->estimated_fare - $commission;
+                        $driver->balance += $driverEarning;
                         $driver->save();
-                    } else {
-                        throw new \Exception('Saldo driver tidak mencukupi untuk dipotong komisi.');
                     }
                     break;
 
@@ -178,7 +187,12 @@ class OrderService
             ];
 
         } catch (\Exception $e) {
-            Log::error('Order Status Update Error: ' . $e->getMessage());
+            Log::error('Order Status Update Error: ' . $e->getMessage(), [
+                'order_id' => $orderId,
+                'status' => $status,
+                'driver_id' => $driverId,
+                'trace' => $e->getTraceAsString()
+            ]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -350,7 +364,7 @@ class OrderService
     {
         do {
             $orderNumber = 'ORD-' . date('Ymd') . '-' . strtoupper(Str::random(6));
-        } while (Order::where('order_number', $orderNumber)->exists());
+        } while (Order::where('order_code', $orderNumber)->exists());
 
         return $orderNumber;
     }

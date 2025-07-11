@@ -64,7 +64,7 @@
                                             📞 Telepon
                                         </a>
                                     @endif
-                                    <a href="{{ route('customer.book-ride') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm">
+                                    <a href="{{ route('customer.drivers') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm">
                                         Pesan
                                     </a>
                                 </div>

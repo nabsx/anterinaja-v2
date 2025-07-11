@@ -8,7 +8,7 @@
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex justify-between items-center mb-6">
                 <h1 class="text-2xl font-bold text-gray-800">Riwayat Pesanan</h1>
-                <a href="{{ route('customer.book-ride') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                <a href="{{ route('customer.book') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                     Pesan Baru
                 </a>
             </div>
@@ -101,6 +101,101 @@
                             </a>
                         </div>
                     </div>
+                </div>
+            @endif
+
+            <div class="mt-6">
+                <a href="{{ route('customer.dashboard') }}" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                    Kembali ke Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+@extends('layouts.app')
+
+@section('title', 'Pesanan Saya')
+
+@section('content')
+<div class="container mx-auto px-4 py-6">
+    <div class="max-w-6xl mx-auto">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6">Pesanan Saya</h1>
+            
+            @if(session('success'))
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if($orders->count() > 0)
+                <div class="space-y-4">
+                    @foreach($orders as $order)
+                        <div class="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-4 mb-2">
+                                        <h3 class="text-lg font-semibold">{{ $order->order_code }}</h3>
+                                        <span class="inline-block px-2 py-1 text-xs rounded-full
+                                            {{ $order->status === 'completed' ? 'bg-green-100 text-green-800' : 
+                                               ($order->status === 'cancelled' ? 'bg-red-100 text-red-800' : 
+                                               ($order->status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800')) }}">
+                                            {{ ucfirst(str_replace('_', ' ', $order->status)) }}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                        <div>
+                                            <p class="text-sm text-gray-600">Jenis Layanan:</p>
+                                            <p class="font-medium">{{ ucfirst($order->order_type) }}</p>
+                                        </div>
+                                        @if($order->driver)
+                                            <div>
+                                                <p class="text-sm text-gray-600">Driver:</p>
+                                                <p class="font-medium">{{ $order->driver->user->name }}</p>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                        <div>
+                                            <p class="text-sm text-gray-600">Dari:</p>
+                                            <p class="text-sm">{{ $order->pickup_address }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm text-gray-600">Ke:</p>
+                                            <p class="text-sm">{{ $order->destination_address }}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex justify-between items-center text-sm text-gray-600">
+                                        <span>{{ $order->distance_km }} km • {{ $order->estimated_duration }} menit</span>
+                                        <span class="font-semibold text-green-600">Rp {{ number_format($order->fare_amount, 0, ',', '.') }}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="ml-4">
+                                    <a href="{{ route('customer.orders.show', $order) }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm">
+                                        Detail
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+                
+                <div class="mt-6">
+                    {{ $orders->links() }}
+                </div>
+            @else
+                <div class="text-center py-8">
+                    <div class="text-gray-400 text-6xl mb-4">📦</div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">Belum Ada Pesanan</h3>
+                    <p class="text-gray-600 mb-4">Anda belum pernah membuat pesanan.</p>
+                    <a href="{{ route('customer.book-ride') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        Pesan Sekarang
+                    </a>
                 </div>
             @endif
 

@@ -13,12 +13,16 @@ class FareCalculationService
     protected $surchargeRates;
 
     public function __construct()
-    {
+    {   
+        $this->perMinuteRate = config('fare.per_minute_rate', 300);
         $this->baseFare = config('fare.base_fare', 5000);
         $this->perKmRate = config('fare.per_km_rate', 2000);
         $this->minimumFare = config('fare.minimum_fare', 8000);
         $this->surchargeRates = config('fare.surcharge_rates', [
-            'night' => 0.2, // 20% surcharge
+            'night' => 0.2,        // 20% surcharge
+            'peak_hour' => 0.5,    // 50% surcharge for peak hours
+            'rain' => 0.3,         // 30% surcharge for rainy weather
+            'holiday' => 0.25,     // 25% surcharge for holidays
         ]);
     }
 
@@ -28,6 +32,11 @@ class FareCalculationService
     public function calculateFare($distanceKm, $durationMinutes, $vehicleType = 'car', $options = [])
     {
         try {
+            // Validate inputs
+            if ($distanceKm < 0 || $durationMinutes < 0) {
+                throw new \Exception('Distance and duration must be positive values');
+            }
+
             // Base calculation
             $distanceFare = $distanceKm * $this->getPerKmRate($vehicleType);
             $timeFare = $durationMinutes * $this->getPerMinuteRate($vehicleType);
@@ -69,7 +78,12 @@ class FareCalculationService
             ];
 
         } catch (\Exception $e) {
-            Log::error('Fare Calculation Error: ' . $e->getMessage());
+            Log::error('Fare Calculation Error: ' . $e->getMessage(), [
+                'distance_km' => $distanceKm,
+                'duration_minutes' => $durationMinutes,
+                'vehicle_type' => $vehicleType,
+                'options' => $options
+            ]);
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -92,7 +106,7 @@ class FareCalculationService
         
         // Calculate range with potential surcharges
         $minFare = $baseTotal;
-        $maxFare = $baseTotal * (1 + $this->surchargeRates['peak_hour']); // Max with peak hour surcharge
+        $maxFare = $baseTotal * (1 + ($this->surchargeRates['peak_hour'] ?? 0.5)); // Max with peak hour surcharge
 
         return [
             'success' => true,
@@ -100,7 +114,7 @@ class FareCalculationService
                 'min_fare' => $minFare,
                 'max_fare' => $maxFare,
                 'base_fare' => $baseTotal,
-                'currency' => 'IDR'
+                'currency' => config('fare.currency.code', 'IDR')
             ]
         ];
     }
@@ -116,6 +130,21 @@ class FareCalculationService
         if (isset($options['is_night']) && $options['is_night']) {
             $surcharges['night'] = $subtotal * $this->surchargeRates['night'];
         }
+
+        // Peak hour surcharge (7-9 AM, 5-7 PM)
+        if (isset($options['is_peak_hour']) && $options['is_peak_hour']) {
+            $surcharges['peak_hour'] = $subtotal * $this->surchargeRates['peak_hour'];
+        }
+
+        // Rain surcharge
+        if (isset($options['is_rain']) && $options['is_rain']) {
+            $surcharges['rain'] = $subtotal * $this->surchargeRates['rain'];
+        }
+
+        // Holiday surcharge
+        if (isset($options['is_holiday']) && $options['is_holiday']) {
+            $surcharges['holiday'] = $subtotal * $this->surchargeRates['holiday'];
+        }
   
         return $surcharges;
     }
@@ -125,6 +154,13 @@ class FareCalculationService
      */
     protected function getBaseFare($vehicleType)
     {
+        $multipliers = config('fare.vehicle_multipliers', []);
+        
+        if (isset($multipliers[$vehicleType]['base_fare'])) {
+            return $this->baseFare * $multipliers[$vehicleType]['base_fare'];
+        }
+
+        // Fallback to hardcoded rates
         $rates = [
             'motorcycle' => $this->baseFare * 0.5,
             'car' => $this->baseFare,
@@ -140,6 +176,13 @@ class FareCalculationService
      */
     protected function getPerKmRate($vehicleType)
     {
+        $multipliers = config('fare.vehicle_multipliers', []);
+        
+        if (isset($multipliers[$vehicleType]['per_km_rate'])) {
+            return $this->perKmRate * $multipliers[$vehicleType]['per_km_rate'];
+        }
+
+        // Fallback to hardcoded rates
         $rates = [
             'motorcycle' => $this->perKmRate * 0.6,
             'car' => $this->perKmRate,
@@ -155,6 +198,13 @@ class FareCalculationService
      */
     protected function getPerMinuteRate($vehicleType)
     {
+        $multipliers = config('fare.vehicle_multipliers', []);
+        
+        if (isset($multipliers[$vehicleType]['per_minute_rate'])) {
+            return $this->perMinuteRate * $multipliers[$vehicleType]['per_minute_rate'];
+        }
+
+        // Fallback to hardcoded rates
         $rates = [
             'motorcycle' => $this->perMinuteRate * 0.7,
             'car' => $this->perMinuteRate,
@@ -170,6 +220,13 @@ class FareCalculationService
      */
     protected function getMinimumFare($vehicleType)
     {
+        $multipliers = config('fare.vehicle_multipliers', []);
+        
+        if (isset($multipliers[$vehicleType]['minimum_fare'])) {
+            return $this->minimumFare * $multipliers[$vehicleType]['minimum_fare'];
+        }
+
+        // Fallback to hardcoded rates
         $rates = [
             'motorcycle' => $this->minimumFare * 0.6,
             'car' => $this->minimumFare,
@@ -191,19 +248,52 @@ class FareCalculationService
 
         return [
             'is_night' => $hour >= 22 || $hour < 6,
-            
+            'is_peak_hour' => ($hour >= 7 && $hour <= 9) || ($hour >= 17 && $hour <= 19),
+            'is_holiday' => $dayOfWeek == 0 || $dayOfWeek == 6, // Weekend as holiday
+            'is_rain' => false, // This would need weather API integration
         ];
     }
 
-    public function calculateFinalFare($baseFare, $commissionRate = 0.1)
-{
-    $markup = $baseFare * $commissionRate;
-    $finalFare = $baseFare + $markup;
+    /**
+     * Get fare breakdown for display
+     */
+    public function getFareBreakdown($distanceKm, $durationMinutes, $vehicleType = 'car', $options = [])
+    {
+        $fareResult = $this->calculateFare($distanceKm, $durationMinutes, $vehicleType, $options);
+        
+        if (!$fareResult['success']) {
+            return $fareResult;
+        }
 
-    return [
-        'base_fare' => $baseFare,
-        'final_fare' => ceil($finalFare), // dibulatkan ke atas
-        'commission' => ceil($markup),
-    ];
-}
+        $data = $fareResult['data'];
+        
+        return [
+            'success' => true,
+            'breakdown' => [
+                'Base Fare' => 'Rp ' . number_format($data['base_fare'], 0, ',', '.'),
+                'Distance (' . $data['distance_km'] . ' km)' => 'Rp ' . number_format($data['distance_fare'], 0, ',', '.'),
+                'Time (' . ceil($data['duration_minutes']) . ' minutes)' => 'Rp ' . number_format($data['time_fare'], 0, ',', '.'),
+                'Subtotal' => 'Rp ' . number_format($data['subtotal'], 0, ',', '.'),
+                'Surcharges' => $this->formatSurcharges($data['surcharges']),
+                'Total' => 'Rp ' . number_format($data['total'], 0, ',', '.')
+            ]
+        ];
+    }
+
+    /**
+     * Format surcharges for display
+     */
+    protected function formatSurcharges($surcharges)
+    {
+        if (empty($surcharges)) {
+            return 'None';
+        }
+
+        $formatted = [];
+        foreach ($surcharges as $type => $amount) {
+            $formatted[] = ucfirst(str_replace('_', ' ', $type)) . ': Rp ' . number_format($amount, 0, ',', '.');
+        }
+
+        return implode(', ', $formatted);
+    }
 }

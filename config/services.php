@@ -31,27 +31,50 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // OSRM Service Configuration
     'osrm' => [
         'base_url' => env('OSRM_BASE_URL', 'https://router.project-osrm.org'),
         'timeout' => env('OSRM_TIMEOUT', 10),
     ],
 
-    'fcm' => [
-        'server_key' => env('FCM_SERVER_KEY'),
-        'sender_id' => env('FCM_SENDER_ID'),
+    // Google Maps API (alternative to OSRM)
+    'google_maps' => [
+        'api_key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
-    'twilio' => [
-        'sid' => env('TWILIO_SID'),
-        'token' => env('TWILIO_TOKEN'),
-        'from' => env('TWILIO_FROM'),
+    // Firebase for notifications
+    'firebase' => [
+        'server_key' => env('FIREBASE_SERVER_KEY'),
+        'sender_id' => env('FIREBASE_SENDER_ID'),
     ],
 
-    'pusher' => [
-        'app_id' => env('PUSHER_APP_ID'),
-        'key' => env('PUSHER_APP_KEY'),
-        'secret' => env('PUSHER_APP_SECRET'),
-        'cluster' => env('PUSHER_APP_CLUSTER', 'mt1'),
+    // SMS Service
+    'sms' => [
+        'provider' => env('SMS_PROVIDER', 'twilio'), // twilio, nexmo, etc
+        'twilio' => [
+            'account_sid' => env('TWILIO_ACCOUNT_SID'),
+            'auth_token' => env('TWILIO_AUTH_TOKEN'),
+            'from' => env('TWILIO_FROM'),
+        ],
+        'nexmo' => [
+            'key' => env('NEXMO_KEY'),
+            'secret' => env('NEXMO_SECRET'),
+            'from' => env('NEXMO_FROM'),
+        ],
+    ],
+
+    // Payment Gateway
+    'payment' => [
+        'provider' => env('PAYMENT_PROVIDER', 'midtrans'),
+        'midtrans' => [
+            'server_key' => env('MIDTRANS_SERVER_KEY'),
+            'client_key' => env('MIDTRANS_CLIENT_KEY'),
+            'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
+        ],
+        'xendit' => [
+            'secret_key' => env('XENDIT_SECRET_KEY'),
+            'public_key' => env('XENDIT_PUBLIC_KEY'),
+        ],
     ],
 
 ];

@@ -13,7 +13,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(OSRMService::class, function ($app) {
+            return new OSRMService();
+        });
+        
+        $this->app->bind(FareCalculationService::class, function ($app) {
+            return new FareCalculationService();
+        });
+        
+        $this->app->bind(OrderService::class, function ($app) {
+            return new OrderService(
+                $app->make(OSRMService::class),
+                $app->make(FareCalculationService::class),
+                $app->make(NotificationService::class)
+            );
+        });
     }
 
     /**
