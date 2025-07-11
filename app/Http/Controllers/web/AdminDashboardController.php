@@ -35,7 +35,7 @@ class AdminDashboardController extends Controller
             'pending_orders' => Order::whereIn('status', ['pending', 'accepted', 'on_the_way'])->count(),
             'total_revenue' => Order::where('status', 'completed')->sum('platform_commission'),
             'today_orders' => Order::whereDate('created_at', Carbon::today())->count(),
-            'pending_driver_approvals' => Driver::where('status', 'pending')->count(),
+            'pending_driver_approvals' => Driver::where('is_verified', 0)->count(),
             'pending_documents' => DriverDocument::where('status', 'pending')->count(),
         ];
 
@@ -45,7 +45,7 @@ class AdminDashboardController extends Controller
             ->get();
 
         $pending_drivers = Driver::with('user')
-            ->where('status', 'pending')
+            ->where('is_verified', 0)
             ->latest()
             ->take(5)
             ->get();
@@ -159,7 +159,7 @@ class AdminDashboardController extends Controller
 
     public function approveDriver(Driver $driver)
     {
-        $driver->update(['status' => 'approved']);
+        $driver->update(['is_verified' => 1]);
         
         $this->notificationService->sendDriverNotification(
             $driver->user_id,
