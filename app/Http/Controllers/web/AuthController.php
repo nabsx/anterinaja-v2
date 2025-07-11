@@ -13,20 +13,32 @@ use Illuminate\Support\Facades\Validator;
 class AuthController extends Controller
 {
     public function showLogin()
-    {
-        if (Auth::check()) {
-            return redirect()->route('dashboard');
-        }
-        return view('auth.login');
+{
+    if (Auth::check()) {
+        $user = Auth::user();
+        return match ($user->role) {
+            'admin' => redirect()->route('admin.dashboard'),
+            'driver' => redirect()->route('driver.dashboard'),
+            'customer' => redirect()->route('customer.dashboard'),
+            default => abort(403),
+        };
     }
+    return view('auth.login');
+}
 
-    public function showRegister()
-    {
-        if (Auth::check()) {
-            return redirect()->route('dashboard');
-        }
-        return view('auth.register');
+public function showRegister()
+{
+    if (Auth::check()) {
+        $user = Auth::user();
+        return match ($user->role) {
+            'admin' => redirect()->route('admin.dashboard'),
+            'driver' => redirect()->route('driver.dashboard'),
+            'customer' => redirect()->route('customer.dashboard'),
+            default => abort(403),
+        };
     }
+    return view('auth.register');
+}
 
     public function login(Request $request)
     {

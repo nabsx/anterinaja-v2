@@ -33,7 +33,7 @@ class AdminDashboardController extends Controller
             'total_orders' => Order::count(),
             'completed_orders' => Order::where('status', 'completed')->count(),
             'pending_orders' => Order::whereIn('status', ['pending', 'accepted', 'on_the_way'])->count(),
-            'total_revenue' => Order::where('status', 'completed')->sum('total_amount'),
+            'total_revenue' => Order::where('status', 'completed')->sum('platform_commission'),
             'today_orders' => Order::whereDate('created_at', Carbon::today())->count(),
             'pending_driver_approvals' => Driver::where('status', 'pending')->count(),
             'pending_documents' => DriverDocument::where('status', 'pending')->count(),
@@ -52,7 +52,7 @@ class AdminDashboardController extends Controller
 
         $monthly_revenue = Order::where('status', 'completed')
             ->whereYear('created_at', Carbon::now()->year)
-            ->selectRaw('MONTH(created_at) as month, SUM(total_amount) as revenue')
+            ->selectRaw('MONTH(created_at) as month, SUM(platform_commission) as revenue')
             ->groupBy('month')
             ->orderBy('month')
             ->get()

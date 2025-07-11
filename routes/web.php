@@ -37,7 +37,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware(['auth', 'web'])->group(function () {
     
     // General dashboard route
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    //Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
     // Customer dashboard routes
     Route::middleware('role:customer')->prefix('customer')->group(function () {
@@ -73,7 +73,7 @@ Route::middleware(['auth', 'web'])->group(function () {
     
     // Admin dashboard routes
     Route::middleware('role:admin')->prefix('admin')->group(function () {
-        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+        Route::get('admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
         
         // User Management
         Route::get('/users', [AdminDashboardController::class, 'users'])->name('admin.users');

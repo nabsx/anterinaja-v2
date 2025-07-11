@@ -27,8 +27,7 @@ class DashboardController extends Controller
             return redirect()->route('driver.dashboard');
         } elseif ($user->role === 'customer') {
             return redirect()->route('customer.dashboard');
-        }
-
+        }   
         // Corrected view path
         return view('dashboard.index', ['user' => $user]);
     }
