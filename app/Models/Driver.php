@@ -29,9 +29,6 @@ class Driver extends Model
         'balance',
         'emergency_contact_name',
         'emergency_contact_phone',
-        'verification_notes',
-        'verified_at',
-        'verified_by',
     ];
 
     protected $casts = [

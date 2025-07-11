@@ -253,4 +253,32 @@ class Order extends Model
         $this->update($updateData);
         $this->addTracking($status, $additionalData['notes'] ?? null);
     }
+
+    public function calculateFare(Request $request, FareCalculatorService $fareService)
+    {
+        Log::info('CalculateFare called', $request->all());
+    $request->validate([
+        'pickup_latitude' => 'required|numeric',
+        'pickup_longitude' => 'required|numeric',
+        'destination_latitude' => 'required|numeric',
+        'destination_longitude' => 'required|numeric',
+        'service_type' => 'required|in:motor,mobil',
+    ]);
+
+    $distanceKm = $this->getDistanceFromOSRM(...); // misalnya: 3.75
+
+    $fare = $fareService->calculate($distanceKm, $request->service_type);
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'distance' => round($distanceKm, 2),
+            'base_fare' => $fare['base_fare'],
+            'distance_fare' => $fare['distance_fare'],
+            'commission' => $fare['commission'],
+            'driver_earnings' => $fare['total_driver'],
+            'total_fare' => $fare['total_customer'],
+        ]
+    ]);
+    }
 }

@@ -19,77 +19,67 @@ class FareCalculationService
         $this->perKmRate = config('fare.per_km_rate', 2000);
         $this->minimumFare = config('fare.minimum_fare', 8000);
         $this->surchargeRates = config('fare.surcharge_rates', [
-            'night' => 0.2,        // 20% surcharge
-            'peak_hour' => 0.5,    // 50% surcharge for peak hours
-            'rain' => 0.3,         // 30% surcharge for rainy weather
-            'holiday' => 0.25,     // 25% surcharge for holidays
+            'night' => 0.2,        // 20% surcharge    
         ]);
     }
 
     /**
      * Calculate fare based on distance and duration
      */
-    public function calculateFare($distanceKm, $durationMinutes, $vehicleType = 'car', $options = [])
-    {
-        try {
-            // Validate inputs
-            if ($distanceKm < 0 || $durationMinutes < 0) {
-                throw new \Exception('Distance and duration must be positive values');
-            }
+    public function calculateFare($distanceKm, $durationMinutes, $serviceType, $conditions)
+{
+    $baseFare = 0;
+    $perKmRate = 0;
 
-            // Base calculation
-            $distanceFare = $distanceKm * $this->getPerKmRate($vehicleType);
-            $timeFare = $durationMinutes * $this->getPerMinuteRate($vehicleType);
-            $baseFare = $this->getBaseFare($vehicleType);
-
-            $subtotal = $baseFare + $distanceFare + $timeFare;
-
-            // Apply minimum fare
-            $minimumFare = $this->getMinimumFare($vehicleType);
-            if ($subtotal < $minimumFare) {
-                $subtotal = $minimumFare;
-            }
-
-            // Apply surcharges
-            $surcharges = $this->calculateSurcharges($subtotal, $options);
-            $totalSurcharge = array_sum($surcharges);
-
-            $total = $subtotal + $totalSurcharge;
-
-            return [
-                'success' => true,
-                'data' => [
-                    'base_fare' => $baseFare,
-                    'distance_fare' => $distanceFare,
-                    'time_fare' => $timeFare,
-                    'subtotal' => $subtotal,
-                    'surcharges' => $surcharges,
-                    'total_surcharge' => $totalSurcharge,
-                    'total' => $total,
-                    'distance_km' => $distanceKm,
-                    'duration_minutes' => $durationMinutes,
-                    'vehicle_type' => $vehicleType,
-                    'breakdown' => [
-                        'per_km_rate' => $this->getPerKmRate($vehicleType),
-                        'per_minute_rate' => $this->getPerMinuteRate($vehicleType),
-                        'minimum_fare' => $minimumFare
-                    ]
-                ]
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('Fare Calculation Error: ' . $e->getMessage(), [
-                'distance_km' => $distanceKm,
-                'duration_minutes' => $durationMinutes,
-                'vehicle_type' => $vehicleType,
-                'options' => $options
-            ]);
-            return [
-                'success' => false,
-                'error' => $e->getMessage()
-            ];
+    if ($serviceType === 'motorcycle') {
+        if ($distanceKm <= 4) {
+            $baseFare = 8000;
+            $perKmRate = 0;
+        } else {
+            $baseFare = 8000;
+            $perKmRate = 2000;
         }
+    } elseif ($serviceType === 'car') {
+        if ($distanceKm <= 4) {
+            $baseFare = 10000;
+            $perKmRate = 0;
+        } else {
+            $baseFare = 10000;
+            $perKmRate = 3500;
+        }
+    } else {
+        return [
+            'success' => false,
+            'error' => 'Jenis layanan tidak dikenali.'
+        ];
     }
+
+    $distanceFare = $perKmRate * max(0, $distanceKm - 4);
+    $subtotal = $baseFare + $distanceFare;
+    $commission = $subtotal * 0.10;
+    $totalFare = $subtotal + $commission;
+
+    return [
+        'success' => true,
+        'data' => [
+            'base_fare' => $baseFare,
+            'distance_fare' => $distanceFare,
+            'time_fare' => 0,
+            'subtotal' => $subtotal,
+            'surcharges' => [
+                'commission' => $commission
+            ],
+            'total_surcharge' => $commission,
+            'total' => $totalFare,
+            'breakdown' => [
+                'base_fare' => $baseFare,
+                'distance_fare' => $distanceFare,
+                'commission' => $commission,
+            ]
+        ]
+    ];
+}
+
 
     /**
      * Calculate estimated fare range
@@ -129,21 +119,6 @@ class FareCalculationService
         // Night surcharge (10 PM - 6 AM)
         if (isset($options['is_night']) && $options['is_night']) {
             $surcharges['night'] = $subtotal * $this->surchargeRates['night'];
-        }
-
-        // Peak hour surcharge (7-9 AM, 5-7 PM)
-        if (isset($options['is_peak_hour']) && $options['is_peak_hour']) {
-            $surcharges['peak_hour'] = $subtotal * $this->surchargeRates['peak_hour'];
-        }
-
-        // Rain surcharge
-        if (isset($options['is_rain']) && $options['is_rain']) {
-            $surcharges['rain'] = $subtotal * $this->surchargeRates['rain'];
-        }
-
-        // Holiday surcharge
-        if (isset($options['is_holiday']) && $options['is_holiday']) {
-            $surcharges['holiday'] = $subtotal * $this->surchargeRates['holiday'];
         }
   
         return $surcharges;
@@ -195,27 +170,28 @@ class FareCalculationService
 
     /**
      * Get per minute rate by vehicle type
-     */
-    protected function getPerMinuteRate($vehicleType)
-    {
-        $multipliers = config('fare.vehicle_multipliers', []);
+     
+   * protected function getPerMinuteRate($vehicleType)
+    *{
+       * $multipliers = config('fare.vehicle_multipliers', []);
         
-        if (isset($multipliers[$vehicleType]['per_minute_rate'])) {
-            return $this->perMinuteRate * $multipliers[$vehicleType]['per_minute_rate'];
-        }
+       * if (isset($multipliers[$vehicleType]['per_minute_rate'])) {
+        *    return $this->perMinuteRate * $multipliers[$vehicleType]['per_minute_rate'];
+      *  }
 
-        // Fallback to hardcoded rates
-        $rates = [
-            'motorcycle' => $this->perMinuteRate * 0.7,
-            'car' => $this->perMinuteRate,
-            'van' => $this->perMinuteRate * 1.2,
-            'truck' => $this->perMinuteRate * 1.5
-        ];
+       * // Fallback to hardcoded rates
+       * $rates = [
+        *    'motorcycle' => $this->perMinuteRate * 0.7,
+         *   'car' => $this->perMinuteRate,
+          *  'van' => $this->perMinuteRate * 1.2,
+           * 'truck' => $this->perMinuteRate * 1.5
+     *   ];
 
-        return $rates[$vehicleType] ?? $this->perMinuteRate;
-    }
-
+      *  return $rates[$vehicleType] ?? $this->perMinuteRate;
+  *  }
+*/
     /**
+     
      * Get minimum fare by vehicle type
      */
     protected function getMinimumFare($vehicleType)
@@ -248,9 +224,6 @@ class FareCalculationService
 
         return [
             'is_night' => $hour >= 22 || $hour < 6,
-            'is_peak_hour' => ($hour >= 7 && $hour <= 9) || ($hour >= 17 && $hour <= 19),
-            'is_holiday' => $dayOfWeek == 0 || $dayOfWeek == 6, // Weekend as holiday
-            'is_rain' => false, // This would need weather API integration
         ];
     }
 

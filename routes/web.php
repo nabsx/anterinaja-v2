@@ -24,7 +24,7 @@ Route::get('/', function () {
 })->name('home');
 
 // Guest fare calculation
-Route::post('/calculate-fare', [DashboardController::class, 'calculateFare'])->name('calculate.fare');
+Route::post('/calculate-fare', [CustomerDashboardController::class, 'calculateFare'])->name('calculate.fare');
 
 // Authentication routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');

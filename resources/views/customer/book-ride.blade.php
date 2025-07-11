@@ -469,6 +469,7 @@ function calculateFare() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json', // Tambahkan ini
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         },
         body: JSON.stringify({
@@ -481,16 +482,18 @@ function calculateFare() {
     })
     .then(response => response.json())
     .then(data => {
+        console.log("RESPONSE:", data);
         if (data.success) {
+            const fareData = data.data; // Ambil dari nested "data"
             // Display fare estimation
             document.getElementById('fareDetails').innerHTML = `
                 <div class="space-y-2">
-                    <p><span class="font-medium">Jarak:</span> ${data.distance_km} km</p>
-                    <p><span class="font-medium">Estimasi Waktu:</span> ${data.duration_minutes} menit</p>
-                    <p><span class="font-medium">Tarif Dasar:</span> Rp ${data.base_fare.toLocaleString()}</p>
-                    <p><span class="font-medium">Tarif per KM:</span> Rp ${data.per_km_rate.toLocaleString()}</p>
+                    <p><strong>Jarak:</strong> ${fareData.distance} km</p>
+                    <p><strong>Waktu:</strong> ${fareData.duration} menit</p>
+                    <p><strong>Tarif Dasar:</strong> Rp ${fareData.base_fare.toLocaleString()}</p>
+                    <p><strong>Tarif per KM:</strong> Rp ${fareData.distance_fare.toLocaleString()}</p>
                     <hr class="my-2">
-                    <p class="text-lg font-bold text-blue-800"><span class="font-medium">Total Estimasi:</span> Rp ${data.total_fare.toLocaleString()}</p>
+                    <p><strong>Total Estimasi:</strong> Rp ${fareData.total_fare.toLocaleString()}</p>
                     ${data.approximated ? '<p class="text-xs text-yellow-600">* Estimasi berdasarkan jarak garis lurus</p>' : ''}
                 </div>
             `;

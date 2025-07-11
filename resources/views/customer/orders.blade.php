@@ -96,7 +96,7 @@
                         <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada pesanan</h3>
                         <p class="mt-1 text-sm text-gray-500">Anda belum pernah melakukan pemesanan.</p>
                         <div class="mt-6">
-                            <a href="{{ route('customer.book-ride') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                            <a href="{{ route('customer.book') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                                 Pesan Sekarang
                             </a>
                         </div>
@@ -193,7 +193,7 @@
                     <div class="text-gray-400 text-6xl mb-4">📦</div>
                     <h3 class="text-lg font-medium text-gray-900 mb-2">Belum Ada Pesanan</h3>
                     <p class="text-gray-600 mb-4">Anda belum pernah membuat pesanan.</p>
-                    <a href="{{ route('customer.book-ride') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    <a href="{{ route('customer.book') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                         Pesan Sekarang
                     </a>
                 </div>

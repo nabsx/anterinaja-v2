@@ -71,12 +71,12 @@ class AuthController extends Controller
             'role' => 'required|in:customer,driver',
             'address' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:100',
-            'vehicle_type' => 'required_if:role,driver|in:motorcycle,car',
-            'vehicle_brand' => 'required_if:role,driver|string|max:100',
-            'vehicle_model' => 'required_if:role,driver|string|max:100',
-            'vehicle_year' => 'required_if:role,driver|integer|min:1990|max:' . date('Y'),
-            'vehicle_plate' => 'required_if:role,driver|string|max:20',
-            'license_number' => 'required_if:role,driver|string|max:50',
+            'vehicle_type' => 'nullable|required_if:role,driver|in:motorcycle,car',
+            'vehicle_brand' => 'nullable|required_if:role,driver|string|max:100',
+            'vehicle_model' => 'nullable|required_if:role,driver|string|max:100',
+            'vehicle_year' => 'nullable|required_if:role,driver|integer|min:1990|max:' . date('Y'),
+            'vehicle_plate' => 'nullable|required_if:role,driver|string|max:20',
+            'license_number' => 'nullable|required_if:role,driver|string|max:50',
         ]);
 
         if ($validator->fails()) {
@@ -118,6 +118,8 @@ class AuthController extends Controller
         } else {
             return redirect()->route('customer.dashboard')->with('success', 'Akun customer berhasil dibuat!');
         }
+
+        
     }
 
     public function logout(Request $request)
