@@ -97,14 +97,14 @@ class Driver extends Model
         return $query->where('is_verified', false);
     }
 
-    public function scopeNearby($query, $lat, $lng, $radiusKm = 5)
+    public function scopeNearby($query, $latitude, $longitude, $radiusKm = 5)
     {
         return $query->whereRaw(
             "ST_Distance_Sphere(
                 point(current_longitude, current_latitude),
                 point(?, ?)
             ) <= ?",
-            [$lng, $lat, $radiusKm * 1000]
+            [$longitude, $latitude, $radiusKm * 1000]
         );
     }
 

@@ -114,7 +114,7 @@ class DriverDashboardController extends Controller
         }
 
         $orders = Order::where('status', 'pending')
-            ->where('service_type', $driver->vehicle_type)
+            ->where('vehicle_type', $driver->vehicle_type)
             ->nearby($driver->current_latitude, $driver->current_longitude, 10)
             ->with('customer')
             ->latest()

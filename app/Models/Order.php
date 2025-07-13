@@ -138,6 +138,16 @@ class Order extends Model
                     ->whereYear('created_at', now()->year);
     }
 
+    public function scopeRideType($query)
+    {
+    return $query->where('order_type', 'ride');
+    }
+
+    public function scopeDeliveryType($query)
+    {
+    return $query->where('order_type', 'delivery');
+    }
+
     // Accessors
     public function getStatusLabelAttribute()
     {
@@ -280,5 +290,16 @@ class Order extends Model
             'total_fare' => $fare['total_customer'],
         ]
     ]);
+    }
+
+    public function scopeNearby($query, $latitude, $longitude, $radiusKm = 5)
+    {
+    return $query->whereRaw(
+        "ST_Distance_Sphere(
+            point(pickup_longitude, pickup_latitude),
+            point(?, ?)
+        ) <= ?",
+        [$longitude, $latitude, $radiusKm * 1000]
+    );
     }
 }
