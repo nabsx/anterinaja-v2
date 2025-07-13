@@ -40,38 +40,38 @@ public function showRegister()
     return view('auth.register');
 }
 
-    public function login(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => 'required|min:6',
-        ]);
+public function login(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'email' => 'required|email',
+        'password' => 'required|min:6',
+    ]);
 
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
-        }
-
-        $credentials = $request->only('email', 'password');
-
-        if (Auth::attempt($credentials, $request->has('remember'))) {
-            $request->session()->regenerate();
-
-            $user = Auth::user();
-            $user->updateLastLogin();
-
-            if ($user->role === 'driver') {
-                return redirect()->route('driver.dashboard');
-            } elseif ($user->role === 'customer') {
-                return redirect()->route('customer.dashboard');
-            }
-
-            return redirect()->route('dashboard');
-        }
-
-        return back()->withErrors([
-            'email' => 'Email atau password tidak valid.',
-        ])->withInput();
+    if ($validator->fails()) {
+        return back()->withErrors($validator)->withInput();
     }
+
+    $credentials = $request->only('email', 'password');
+
+    if (Auth::attempt($credentials, $request->has('remember'))) {
+        $request->session()->regenerate();
+
+        $user = Auth::user();
+        $user->updateLastLogin();
+
+        // Redirect berdasarkan role
+        return match ($user->role) {
+            'admin' => redirect()->route('admin.dashboard'),
+            'driver' => redirect()->route('driver.dashboard'),
+            'customer' => redirect()->route('customer.dashboard'),
+            default => redirect()->route('home')->with('error', 'Role tidak valid.'),
+        };
+    }
+
+    return back()->withErrors([
+        'email' => 'Email atau password tidak valid.',
+    ])->withInput();
+}
 
     public function register(Request $request)
     {

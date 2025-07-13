@@ -37,7 +37,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware(['auth', 'web'])->group(function () {
     
     // General dashboard route
-    //Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
     // Customer dashboard routes
     Route::middleware('role:customer')->prefix('customer')->group(function () {
@@ -74,7 +74,7 @@ Route::middleware(['auth', 'web'])->group(function () {
     
     // Admin dashboard routes
     Route::middleware('role:admin')->prefix('admin')->group(function () {
-        Route::get('admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
         
         // User Management
         Route::get('/users', [AdminDashboardController::class, 'users'])->name('admin.users');
@@ -130,6 +130,21 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::post('/notifications/broadcast', [AdminDashboardController::class, 'broadcastNotification'])->name('admin.notifications.broadcast');
     });
 });
+
+// Fallback untuk redirect berdasarkan role
+Route::get('/home', function () {
+    $user = auth()->user();
+    
+    if ($user->role === 'admin') {
+        return redirect()->route('admin.dashboard');
+    } elseif ($user->role === 'driver') {
+        return redirect()->route('driver.dashboard');
+    } elseif ($user->role === 'customer') {
+        return redirect()->route('customer.dashboard');
+    } else {
+        return redirect()->route('home')->with('error', 'Role tidak valid.');
+    }
+})->middleware('auth')->name('home');
 
 // Redirect common paths to API info
 Route::get('/docs', function () {
