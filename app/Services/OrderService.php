@@ -65,17 +65,17 @@ class OrderService
             // Create order
             $order = Order::create([
                 'order_code' => $this->generateOrderNumber(),
-                'customer_id' => $customerId,
+                'customer_id' => $userId,
                 'pickup_address' => $orderData['pickup_address'],
-                'pickup_lat' => $orderData['pickup_lat'],
-                'pickup_lng' => $orderData['pickup_lng'],
+                'pickup_latitude' => $orderData['pickup_lat'],
+                'pickup_longitude' => $orderData['pickup_lng'],
                 'destination_address' => $orderData['destination_address'],
-                'destination_lat' => $orderData['destination_lat'],
-                'destination_lng' => $orderData['destination_lng'],
+                'destination_latitude' => $orderData['destination_lat'],
+                'destination_longitude' => $orderData['destination_lng'],
                 'vehicle_type' => $orderData['vehicle_type'] ?? 'car',
                 'distance_km' => $routeData['distance_km'],
                 'duration_minutes' => $routeData['duration_minutes'],
-                'estimated_fare' => $customerFare,
+                'fare_amount' => $customerFare,
                 'fare_breakdown' => json_encode([
                     'base_fare' => $fareData['data']['base_fare'],
                     'distance_fare' => $fareData['data']['distance_fare'],
@@ -158,8 +158,8 @@ class OrderService
                     }
                     
                     // Potong komisi platform
-                    $commission = round($order->estimated_fare * config('fare.platform_commission', 0.10));
-                    $driver = $order->driver;
+                    $fareBreakdown = json_decode($order->fare_breakdown, true);
+                    $commission = $fareBreakdown['commission'] ?? 0;
 
                     if ($driver) {
                         // Add fare to driver balance minus commission
@@ -213,7 +213,7 @@ class OrderService
                     cos( radians( drivers.current_lng ) - radians(?) ) + 
                     sin( radians(?) ) * 
                     sin( radians( drivers.current_lat ) ) ) ) AS distance
-                ', [$order->pickup_lat, $order->pickup_lng, $order->pickup_lat])
+                ', [$order->pickup_lat, $order->pickup_longitude, $order->pickup_latitude])
                 ->where('is_active', true)
                 ->where('is_available', true)
                 ->where('vehicle_type', $order->vehicle_type)

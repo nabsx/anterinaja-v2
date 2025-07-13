@@ -12,15 +12,15 @@ class Order extends Model
 
     protected $fillable = [
         'order_code',
-        'user_id',
+        'customer_id',
         'driver_id',
         'order_type',
         'pickup_address',
-        'pickup_lat',
-        'pickup_lng',
+        'pickup_latitude',
+        'pickup_longitude',
         'destination_address',
-        'destination_lat',
-        'destination_lng',
+        'destination_latitude',
+        'destination_longitude',
         'vehicle_type',
         'distance_km',
         'duration_minutes',
@@ -43,10 +43,10 @@ class Order extends Model
     ];
 
     protected $casts = [
-        'pickup_lat' => 'decimal:8',
-        'pickup_lng' => 'decimal:8',
-        'destination_lat' => 'decimal:8',
-        'destination_lng' => 'decimal:8',
+        'pickup_latitude' => 'decimal:8', // Ubah dari 'pickup_lat'
+        'pickup_longitude' => 'decimal:8', // Ubah dari 'pickup_lng'
+        'destination_latitude' => 'decimal:8', // Ubah dari 'destination_lat'
+        'destination_longitude' => 'decimal:8', // Ubah dari 'destination_lng'
         'distance_km' => 'decimal:2',
         'duration_minutes' => 'decimal:2',
         'estimated_fare' => 'decimal:2',
