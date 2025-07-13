@@ -189,11 +189,11 @@ class CustomerDashboardController extends Controller
             // Use OrderService directly - it handles OSRM and fare calculation internally
             $result = $this->orderService->createOrder(Auth::id(), [
                 'pickup_address' => $request->pickup_address,
-                'pickup_lat' => $request->pickup_latitude,
-                'pickup_lng' => $request->pickup_longitude,
+                'pickup_latitude' => $request->pickup_latitude,
+                'pickup_longitude' => $request->pickup_longitude,
                 'destination_address' => $request->destination_address,
-                'destination_lat' => $request->destination_latitude,
-                'destination_lng' => $request->destination_longitude,
+                'destination_latitude' => $request->destination_latitude,
+                'destination_longitude' => $request->destination_longitude,
                 'vehicle_type' => $request->service_type,
                 'notes' => $request->notes,
             ]);

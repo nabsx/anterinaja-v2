@@ -261,4 +261,65 @@ class DriverDashboardController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    public function debugOrders(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $driver = $user->driver;
+
+            // Get all pending orders
+            $allPendingOrders = Order::where('status', 'pending')->get();
+        
+            // Get driver info
+            $driverInfo = [
+                'id' => $driver->id,
+                'is_online' => $driver->is_online,
+                'status' => $driver->status,
+                'current_latitude' => $driver->current_latitude,
+                'current_longitude' => $driver->current_longitude,
+                'last_active_at' => $driver->last_active_at,
+            ];
+
+            // Calculate distances for all pending orders
+            $ordersWithDistance = $allPendingOrders->map(function ($order) use ($driver) {
+                $distance = null;
+                if ($driver->current_latitude && $driver->current_longitude) {
+                    $distance = $this->calculateDistance(
+                        $driver->current_latitude,
+                        $driver->current_longitude,
+                        $order->pickup_latitude,
+                        $order->pickup_longitude
+                    );
+                }
+            
+                return [
+                    'id' => $order->id,
+                    'order_code' => $order->order_code,
+                    'pickup_address' => $order->pickup_address,
+                    'pickup_latitude' => $order->pickup_latitude,
+                    'pickup_longitude' => $order->pickup_longitude,
+                    'status' => $order->status,
+                    'distance_km' => $distance,
+                    'created_at' => $order->created_at,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'driver' => $driverInfo,
+                    'total_pending_orders' => $allPendingOrders->count(),
+                    'orders_with_distance' => $ordersWithDistance,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debug failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

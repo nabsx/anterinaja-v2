@@ -62,6 +62,7 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::get('/orders', [DriverDashboardController::class, 'orders'])->name('driver.orders');
         Route::get('/orders/{order}', [DriverDashboardController::class, 'orderDetail'])->name('driver.orders.show');
         Route::get('/available-orders', [DriverDashboardController::class, 'availableOrders'])->name('driver.available.orders');
+        Route::get('/debug-orders', [DriverController::class, 'debugOrders']);
         Route::put('/orders/{order}/accept', [DriverDashboardController::class, 'acceptOrder'])->name('driver.orders.accept');
         Route::put('/orders/{order}/status', [DriverDashboardController::class, 'updateOrderStatus'])->name('driver.orders.status');
         Route::get('/earnings', [DriverDashboardController::class, 'earnings'])->name('driver.earnings');

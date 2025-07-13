@@ -35,10 +35,10 @@ class OrderService
 
             // Calculate route and fare
             $routeData = $this->osrmService->getDistanceAndDuration(
-                $orderData['pickup_lat'],
-                $orderData['pickup_lng'],
-                $orderData['destination_lat'],
-                $orderData['destination_lng']
+                $orderData['pickup_latitude'] ?? $orderData['pickup_lat'],
+                $orderData['pickup_longitude'] ?? $orderData['pickup_lng'],
+                $orderData['destination_latitude'] ?? $orderData['destination_lat'],
+                $orderData['destination_longitude'] ?? $orderData['destination_lng']
             );
 
             if (!$routeData['success']) {
@@ -67,11 +67,11 @@ class OrderService
                 'order_code' => $this->generateOrderNumber(),
                 'customer_id' => $userId,
                 'pickup_address' => $orderData['pickup_address'],
-                'pickup_latitude' => $orderData['pickup_lat'],
-                'pickup_longitude' => $orderData['pickup_lng'],
+                'pickup_latitude' => $orderData['pickup_latitude'],
+                'pickup_longitude' => $orderData['pickup_longitude'],
                 'destination_address' => $orderData['destination_address'],
-                'destination_latitude' => $orderData['destination_lat'],
-                'destination_longitude' => $orderData['destination_lng'],
+                'destination_latitude' => $orderData['destination_latitude'],
+                'destination_longitude' => $orderData['destination_longitude'],
                 'vehicle_type' => $orderData['vehicle_type'] ?? 'car',
                 'distance_km' => $routeData['distance_km'],
                 'duration_minutes' => $routeData['duration_minutes'],
@@ -209,8 +209,8 @@ class OrderService
             $drivers = Driver::select('drivers.*')
                 ->selectRaw('
                     ( 6371 * acos( cos( radians(?) ) * 
-                    cos( radians( drivers.current_lat ) ) * 
-                    cos( radians( drivers.current_lng ) - radians(?) ) + 
+                    cos( radians( drivers.current_latitude ) ) * 
+                    cos( radians( drivers.current_longitude ) - radians(?) ) + 
                     sin( radians(?) ) * 
                     sin( radians( drivers.current_lat ) ) ) ) AS distance
                 ', [$order->pickup_lat, $order->pickup_longitude, $order->pickup_latitude])
