@@ -59,7 +59,7 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                        Rp {{ number_format($order->total_amount, 0, ',', '.') }}
+                                        Rp {{ number_format($order->fare_amount, 0, ',', '.') }}
                                     </td>
                                     <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
                                         {{ $order->created_at->format('d/m/Y H:i') }}

@@ -229,34 +229,38 @@ class AdminDashboardController extends Controller
     }
 
     public function finances()
-    {
-        $stats = [
-            'total_revenue' => Order::where('status', 'completed')->sum('total_amount'),
-            'total_commission' => Order::where('status', 'completed')->sum('commission'),
-            'driver_earnings' => Order::where('status', 'completed')->sum('driver_earning'),
-            'pending_payouts' => Driver::sum('balance'),
-            'today_revenue' => Order::where('status', 'completed')
-                ->whereDate('created_at', Carbon::today())
-                ->sum('total_amount'),
-            'this_month_revenue' => Order::where('status', 'completed')
-                ->whereMonth('created_at', Carbon::now()->month)
-                ->sum('total_amount'),
-        ];
+{
+    $stats = [
+        'total_revenue' => Order::where('status', 'completed')->sum('actual_fare'),
+        'total_commission' => Order::where('status', 'completed')->sum('commission'),
+        'driver_earnings' => Order::where('status', 'completed')->sum('driver_earning'),
+        'pending_payouts' => Driver::sum('balance'),
+        'today_revenue' => Order::where('status', 'completed')
+            ->whereDate('created_at', Carbon::today())
+            ->sum('actual_fare'),
+        'this_month_revenue' => Order::where('status', 'completed')
+            ->whereMonth('created_at', Carbon::now()->month)
+            ->sum('actual_fare'),
+    ];
 
-        $top_drivers = Driver::with('user')
-            ->where('total_earnings', '>', 0)
-            ->orderBy('total_earnings', 'desc')
-            ->take(10)
-            ->get();
+    // DIPERBAIKI: Ambil top drivers berdasarkan total penghasilan dari orders
+    $top_drivers = Driver::with('user')
+        ->withSum(['orders' => function ($query) {
+            $query->where('status', 'completed');
+        }], 'driver_earning')
+        ->having('orders_sum_driver_earning', '>', 0)
+        ->orderBy('orders_sum_driver_earning', 'desc')
+        ->take(10)
+        ->get();
 
-        $recent_transactions = Order::with(['customer', 'driver'])
-            ->where('status', 'completed')
-            ->latest()
-            ->take(15)
-            ->get();
+    $recent_transactions = Order::with(['customer', 'driver'])
+        ->where('status', 'completed')
+        ->latest()
+        ->take(15)
+        ->get();
 
-        return view('admin.finances.index', compact('stats', 'top_drivers', 'recent_transactions'));
-    }
+    return view('admin.finances.index', compact('stats', 'top_drivers', 'recent_transactions'));
+}
 
     public function vehicleTypes()
     {

@@ -42,7 +42,7 @@
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-600">Estimasi Waktu:</span>
-                                <span class="font-medium">{{ $order->estimated_duration }} menit</span>
+                                <span class="font-medium">{{ $order->duration_minutes }} menit</span>
                             </div>
                             <div class="flex justify-between border-t pt-2">
                                 <span class="text-gray-900 font-semibold">Total Tarif:</span>
