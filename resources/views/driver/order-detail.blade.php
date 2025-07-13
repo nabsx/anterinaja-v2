@@ -49,10 +49,10 @@
                 <div class="space-y-4">
                     <h3 class="text-lg font-semibold text-gray-800">Informasi Pesanan</h3>
                     <div class="bg-gray-50 p-4 rounded-lg">
-                        <p><span class="font-medium">Jenis Layanan:</span> {{ ucfirst($order->service_type) }}</p>
-                        <p><span class="font-medium">Jarak:</span> {{ number_format($order->distance, 1) }} km</p>
+                        <p><span class="font-medium">Jenis Layanan:</span> {{ ucfirst($order->order_type) }}</p>
+                        <p><span class="font-medium">Jarak:</span> {{ number_format($order->distance_km, 1) }} km</p>
                         <p><span class="font-medium">Estimasi Waktu:</span> {{ $order->estimated_duration }} menit</p>
-                        <p><span class="font-medium">Total:</span> Rp {{ number_format($order->total_amount, 0, ',', '.') }}</p>
+                        <p><span class="font-medium">Total:</span> Rp {{ number_format($order->fare_amount, 0, ',', '.') }}</p>
                         @if($order->driver_earning)
                             <p><span class="font-medium">Pendapatan Driver:</span> Rp {{ number_format($order->driver_earning, 0, ',', '.') }}</p>
                         @endif
@@ -115,6 +115,7 @@
                 @if($order->status === 'pending')
                     <form action="{{ route('driver.orders.accept', $order) }}" method="POST" class="inline">
                         @csrf
+                        @method('PATCH')
                         <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" onclick="return confirm('Terima pesanan ini?')">
                             Terima Pesanan
                         </button>
