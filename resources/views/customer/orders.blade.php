@@ -71,7 +71,7 @@
                                         @if(in_array($order->status, ['pending', 'accepted']))
                                             <form action="{{ route('customer.orders.cancel', $order) }}" method="POST" class="inline">
                                                 @csrf
-                                                @method('DELETE')
+                                                @method('PATCH')
                                                 <button type="submit" class="text-red-600 hover:text-red-900" onclick="return confirm('Yakin ingin membatalkan pesanan?')">
                                                     Batalkan
                                                 </button>
