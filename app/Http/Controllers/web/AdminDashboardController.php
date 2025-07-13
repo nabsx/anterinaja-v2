@@ -332,7 +332,7 @@ class AdminDashboardController extends Controller
         $financial_stats = [
             'revenue' => Order::where('status', 'completed')
                 ->whereBetween('created_at', [$date_range['start'], $date_range['end']])
-                ->sum('total_amount'),
+                ->sum('actual_fare'),
             'commission' => Order::where('status', 'completed')
                 ->whereBetween('created_at', [$date_range['start'], $date_range['end']])
                 ->sum('commission'),
