@@ -16,6 +16,46 @@
         .leaflet-container {
             background: #f8fafc !important;
         }
+        .search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            background: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            position: absolute;
+            width: 100%;
+        }
+        .search-result-item {
+            padding: 12px;
+            border-bottom: 1px solid #f3f4f6;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .search-result-item:hover {
+            background-color: #f8fafc;
+        }
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+        .search-input-container {
+            position: relative;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
     <script>
         tailwind.config = {
@@ -95,7 +135,7 @@
                     <span class="text-gray-800">Termurah & Terpercaya</span>
                 </h2>
                 <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
-                    Pesan ojek dan kurir online dengan harga terjangkau. 
+                    Aplikasi transportasi online yang dibuat oleh komunitas driver untuk kesejahteraan bersama.
                     <span class="font-semibold text-blue-600">Cek tarif tanpa perlu login!</span>
                 </p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -153,138 +193,148 @@
         </div>
     </section>
 
-
-    <section class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div class="p-6 md:p-8">
-                <h2 class="text-3xl font-bold text-center text-gray-800 mb-2">Cek Tarif Perjalanan</h2>
-                <p class="text-gray-600 text-center mb-6">Hitung estimasi biaya perjalanan Anda dengan akurat</p>
-                
-                <div class="space-y-6">
-                    <!-- Location Inputs -->
-                    <div class="grid md:grid-cols-2 gap-6">
-                        <!-- Pickup Location -->
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                                <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                                Lokasi Penjemputan
-                            </label>
-                            <div class="relative">
-                                <textarea id="pickup_address" rows="2" class="w-full border border-gray-300 rounded-lg p-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="Masukkan alamat penjemputan..."></textarea>
-                                <input type="hidden" id="pickup_latitude">
-                                <input type="hidden" id="pickup_longitude">
+    <!-- Fare Calculator Section -->
+    <section id="cek-ongkir" class="py-16 bg-gray-50">
+        <div class="container mx-auto px-6">
+            <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div class="p-6 md:p-8">
+                    <h2 class="text-3xl font-bold text-center text-gray-800 mb-2">Cek Tarif Perjalanan</h2>
+                    <p class="text-gray-600 text-center mb-6">Hitung estimasi biaya perjalanan Anda dengan akurat</p>
+                    
+                    <div class="space-y-6">
+                        <!-- Location Inputs -->
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <!-- Pickup Location -->
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                    <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+                                    Lokasi Penjemputan
+                                </label>
+                                <div class="search-input-container">
+                                    <textarea id="pickup_address" rows="2" class="w-full border border-gray-300 rounded-lg p-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none" placeholder="Cari alamat... (contoh: DP Mall Semarang)"></textarea>
+                                    <div id="pickup_search_results" class="search-results hidden"></div>
+                                    <input type="hidden" id="pickup_latitude">
+                                    <input type="hidden" id="pickup_longitude">
+                                    <div id="pickup_loading" class="absolute right-3 top-3 hidden">
+                                        <div class="loading-spinner"></div>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 mt-2">
+                                    <button onclick="getCurrentLocation('pickup')" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm py-2 px-3 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-location-arrow mr-2"></i>
+                                        <span id="currentLocationText">Lokasi Saya</span>
+                                    </button>
+                                    <button onclick="setLocationMode('pickup')" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm py-2 px-3 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-map-marker-alt mr-2"></i>
+                                        Pilih di Peta
+                                    </button>
+                                </div>
                             </div>
-                            <div class="flex gap-2 mt-2">
-                                <button onclick="getCurrentLocation('pickup')" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm py-2 px-3 rounded-lg flex items-center justify-center">
-                                    <i class="fas fa-location-arrow mr-2"></i>
-                                    <span id="currentLocationText">Lokasi Saya</span>
-                                </button>
-                                <button onclick="setLocationMode('pickup')" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm py-2 px-3 rounded-lg flex items-center justify-center">
+                            
+                            <!-- Destination Location -->
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+                                    <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
+                                    Lokasi Tujuan
+                                </label>
+                                <div class="search-input-container">
+                                    <textarea id="destination_address" rows="2" class="w-full border border-gray-300 rounded-lg p-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none" placeholder="Cari alamat... (contoh: Paragon Mall Semarang)"></textarea>
+                                    <div id="destination_search_results" class="search-results hidden"></div>
+                                    <input type="hidden" id="destination_latitude">
+                                    <input type="hidden" id="destination_longitude">
+                                    <div id="destination_loading" class="absolute right-3 top-3 hidden">
+                                        <div class="loading-spinner"></div>
+                                    </div>
+                                </div>
+                                <button onclick="setLocationMode('destination')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm py-2 px-3 rounded-lg mt-2 flex items-center justify-center">
                                     <i class="fas fa-map-marker-alt mr-2"></i>
                                     Pilih di Peta
                                 </button>
                             </div>
                         </div>
                         
-                        <!-- Destination Location -->
+                        <!-- Map Container -->
+                        <div class="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+                            <div id="mapInstructions" class="text-sm text-gray-600 p-3 bg-blue-50 border-b border-blue-100">
+                                <i class="fas fa-info-circle text-blue-500 mr-1"></i>
+                                Ketik alamat di kotak pencarian atau klik "Pilih di Peta"
+                            </div>
+                            <div id="map"></div>
+                            <div id="mapControls" class="hidden p-3 bg-yellow-50 border-t border-yellow-200">
+                                <p class="text-sm text-yellow-800 mb-2 flex items-center">
+                                    <i class="fas fa-exclamation-triangle text-yellow-600 mr-2"></i>
+                                    <span id="mapMode">Mode:</span> Klik pada peta untuk memilih lokasi
+                                </p>
+                                <div class="flex gap-2">
+                                    <button onclick="confirmLocation()" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg">
+                                        <i class="fas fa-check mr-1"></i> Konfirmasi
+                                    </button>
+                                    <button onclick="cancelLocationMode()" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">
+                                        <i class="fas fa-times mr-1"></i> Batal
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Vehicle Selection -->
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                                <span class="w-3 h-3 bg-red-500 rounded-full mr-2"></span>
-                                Lokasi Tujuan
-                            </label>
-                            <div class="relative">
-                                <textarea id="destination_address" rows="2" class="w-full border border-gray-300 rounded-lg p-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="Masukkan alamat tujuan..."></textarea>
-                                <input type="hidden" id="destination_latitude">
-                                <input type="hidden" id="destination_longitude">
-                            </div>
-                            <button onclick="setLocationMode('destination')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm py-2 px-3 rounded-lg mt-2 flex items-center justify-center">
-                                <i class="fas fa-map-marker-alt mr-2"></i>
-                                Pilih di Peta
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Map Container -->
-                    <div class="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
-                        <div id="mapInstructions" class="text-sm text-gray-600 p-3 bg-blue-50 border-b border-blue-100">
-                            <i class="fas fa-info-circle text-blue-500 mr-1"></i>
-                            Klik tombol "Pilih di Peta" untuk menentukan lokasi
-                        </div>
-                        <div id="map"></div>
-                        <div id="mapControls" class="hidden p-3 bg-yellow-50 border-t border-yellow-200">
-                            <p class="text-sm text-yellow-800 mb-2 flex items-center">
-                                <i class="fas fa-exclamation-triangle text-yellow-600 mr-2"></i>
-                                <span id="mapMode">Mode:</span> Klik pada peta untuk memilih lokasi
-                            </p>
-                            <div class="flex gap-2">
-                                <button onclick="confirmLocation()" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg">
-                                    <i class="fas fa-check mr-1"></i> Konfirmasi
-                                </button>
-                                <button onclick="cancelLocationMode()" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">
-                                    <i class="fas fa-times mr-1"></i> Batal
-                                </button>
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">Pilih Jenis Kendaraan</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="service_type" value="motorcycle" class="sr-only peer" checked>
+                                    <div class="border-2 border-gray-200 rounded-xl p-4 text-center hover:border-green-300 peer-checked:border-green-500 peer-checked:bg-green-50 transition-all">
+                                        <i class="fas fa-motorcycle text-2xl text-green-600 mb-2"></i>
+                                        <div class="font-semibold">Motor</div>
+                                        <div class="text-sm text-gray-500">Cepat & Hemat</div>
+                                        <div class="text-xs text-green-600 font-medium mt-1">Mulai Rp 9.000</div>
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="service_type" value="car" class="sr-only peer">
+                                    <div class="border-2 border-gray-200 rounded-xl p-4 text-center hover:border-blue-300 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
+                                        <i class="fas fa-car text-2xl text-blue-600 mb-2"></i>
+                                        <div class="font-semibold">Mobil</div>
+                                        <div class="text-sm text-gray-500">Nyaman & Aman</div>
+                                        <div class="text-xs text-blue-600 font-medium mt-1">Mulai Rp 11.000</div>
+                                    </div>
+                                </label>
                             </div>
                         </div>
-                    </div>
-                    
-                    <!-- Vehicle Selection -->
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-3">Pilih Jenis Kendaraan</label>
-                        <div class="grid grid-cols-2 gap-4">
-                            <label class="cursor-pointer">
-                                <input type="radio" name="service_type" value="motorcycle" class="sr-only peer" checked>
-                                <div class="border-2 border-gray-200 rounded-xl p-4 text-center hover:border-green-300 peer-checked:border-green-500 peer-checked:bg-green-50 transition-all">
-                                    <i class="fas fa-motorcycle text-2xl text-green-600 mb-2"></i>
-                                    <div class="font-semibold">Motor</div>
-                                    <div class="text-sm text-gray-500">Cepat & Hemat</div>
-                                    <div class="text-xs text-green-600 font-medium mt-1">Mulai Rp 9.000</div>
-                                </div>
-                            </label>
-                            <label class="cursor-pointer">
-                                <input type="radio" name="service_type" value="car" class="sr-only peer">
-                                <div class="border-2 border-gray-200 rounded-xl p-4 text-center hover:border-blue-300 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
-                                    <i class="fas fa-car text-2xl text-blue-600 mb-2"></i>
-                                    <div class="font-semibold">Mobil</div>
-                                    <div class="text-sm text-gray-500">Nyaman & Aman</div>
-                                    <div class="text-xs text-blue-600 font-medium mt-1">Mulai Rp 11.000</div>
-                                </div>
-                            </label>
+                        
+                        <!-- Fare Estimation -->
+                        <div id="fareEstimation" class="hidden bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6">
+                            <div class="flex items-center gap-2 mb-4">
+                                <i class="fas fa-money-bill-wave text-blue-600 text-xl"></i>
+                                <h3 class="text-lg font-semibold text-gray-800">Estimasi Tarif</h3>
+                            </div>
+                            <div id="fareDetails"></div>
                         </div>
+                        
+                        <!-- Calculate Button -->
+                        <button onclick="calculateFare()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 px-6 rounded-lg font-semibold text-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-calculator mr-2"></i>
+                            Hitung Tarif
+                        </button>
                     </div>
-                    
-                    <!-- Fare Estimation -->
-                    <div id="fareEstimation" class="hidden bg-white border border-blue-200 rounded-xl p-4">
-                        <div class="flex items-center gap-2 mb-3">
-                            <i class="fas fa-money-bill-wave text-blue-500"></i>
-                            <h3 class="text-lg font-semibold">Estimasi Tarif</h3>
-                        </div>
-                        <div id="fareDetails"></div>
+                </div>
+                
+                <!-- Registration CTA -->
+                <div class="bg-gray-50 border-t border-gray-200 p-6 text-center">
+                    <p class="text-gray-600 mb-3">Siap memesan perjalanan?</p>
+                    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                        <a href="#" class="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all">
+                            <i class="fas fa-user-plus mr-2"></i>
+                            Daftar Sekarang
+                        </a>
+                        <a href="#" class="inline-flex items-center justify-center px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                            <i class="fas fa-sign-in-alt mr-2"></i>
+                            Masuk
+                        </a>
                     </div>
-                    
-                    <!-- Calculate Button -->
-                    <button onclick="calculateFare()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 px-6 rounded-lg font-semibold text-lg transition-all transform hover:scale-[1.02]">
-                        <i class="fas fa-calculator mr-2"></i>
-                        Hitung Tarif
-                    </button>
                 </div>
             </div>
-            
-            <!-- Registration CTA -->
-            <div class="bg-gray-50 border-t border-gray-200 p-6 text-center">
-                <p class="text-gray-600 mb-3">Siap memesan perjalanan?</p>
-                <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                    <a href="{{ route('register') }}" class="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all">
-                        <i class="fas fa-user-plus mr-2"></i>
-                        Daftar Sekarang
-                    </a>
-                    <a href="{{ route('login') }}" class="inline-flex items-center justify-center px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-                        <i class="fas fa-sign-in-alt mr-2"></i>
-                        Masuk
-                    </a>
-                </div>
-            </div>
-        </section>
-
-    
+        </div>
+    </section>
 
     <!-- Driver CTA Section -->
     <section class="py-20 bg-gradient-to-r from-green-600 to-emerald-600 text-white relative overflow-hidden">
@@ -313,7 +363,7 @@
                         <span>Jadwal Fleksibel</span>
                     </div>
                 </div>
-                <a href="{{ url('/register?role=driver') }}" 
+                <a href="#" 
                    class="inline-flex items-center px-8 py-4 bg-white text-green-600 rounded-full font-bold text-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300">
                     <i class="fas fa-motorcycle mr-2"></i>
                     Daftar Jadi Driver
@@ -376,7 +426,7 @@
             </div>
             <div class="border-t border-gray-800 pt-8 text-center">
                 <p class="text-gray-400">
-                    &copy; {{ date('Y') }} AnterinAja. Semua hak dilindungi. 
+                    &copy; 2024 AnterinAja. Semua hak dilindungi. 
                     <span class="text-blue-400">Dibuat dengan ❤️ di Indonesia</span>
                 </p>
             </div>
@@ -385,8 +435,6 @@
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Polyline Encoded -->
-    <script src="https://cdn.jsdelivr.net/npm/polyline-encoded@0.0.9/Polyline.encoded.js"></script>
     
     <script>
     // Map variables
@@ -396,22 +444,25 @@
     let routeControl = null;
     let currentLocationMode = null;
     let tempMarker = null;
+    let searchTimeouts = {};
+    let routePolyline = null;
+
+    // Initialize map when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        initMap();
+        setupEventListeners();
+    });
 
     // Initialize map
     function initMap() {
         try {
-            // Default center (Jakarta)
-            map = L.map('map').setView([-6.2088, 106.8456], 13);
+            // Default center (Semarang)
+            map = L.map('map').setView([-6.966667, 110.416664], 12);
             
-            // Add OpenStreetMap tiles with error handling
+            // Add OpenStreetMap tiles
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors',
                 maxZoom: 19,
-            }).on('tileerror', function() {
-                // Fallback tile server
-                L.tileLayer('https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(map);
             }).addTo(map);
             
             // Add click event to map
@@ -424,14 +475,277 @@
         } catch (e) {
             console.error('Map initialization error:', e);
             document.getElementById('map').innerHTML = 
-                '<div class="p-3 bg-red-50 text-red-700">Gagal memuat peta. Silakan refresh halaman.</div>';
+                '<div class="p-4 bg-red-50 text-red-700 text-center">Gagal memuat peta. Silakan refresh halaman.</div>';
         }
+    }
+
+    // Setup event listeners
+    function setupEventListeners() {
+        // Address search event listeners
+        document.getElementById('pickup_address').addEventListener('input', function(e) {
+            handleAddressInput(e.target.value, 'pickup');
+        });
+        
+        document.getElementById('destination_address').addEventListener('input', function(e) {
+            handleAddressInput(e.target.value, 'destination');
+        });
+
+        // Hide search results when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-input-container')) {
+                hideSearchResults('pickup');
+                hideSearchResults('destination');
+            }
+        });
+    }
+
+    // Handle address input with debouncing
+    function handleAddressInput(query, type) {
+        // Clear existing timeout
+        if (searchTimeouts[type]) {
+            clearTimeout(searchTimeouts[type]);
+        }
+
+        // Hide results if query is too short
+        if (query.length < 3) {
+            hideSearchResults(type);
+            return;
+        }
+
+        // Show loading spinner
+        showLoading(type, true);
+
+        // Set timeout for search
+        searchTimeouts[type] = setTimeout(() => {
+            searchAddress(query, type);
+        }, 500);
+    }
+
+    // Search address using Nominatim API
+    function searchAddress(query, type) {
+        const resultsContainer = document.getElementById(type + '_search_results');
+        
+        // Add priority for Semarang area
+        const semarangQuery = query.includes('Semarang') ? query : query + ' Semarang';
+        
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(semarangQuery)}&limit=5&countrycodes=ID&addressdetails=1`)
+            .then(response => response.json())
+            .then(data => {
+                showLoading(type, false);
+                
+                if (data.length === 0) {
+                    // Try without Semarang if no results
+                    return fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ID&addressdetails=1`)
+                        .then(response => response.json());
+                }
+                return data;
+            })
+            .then(data => {
+                displaySearchResults(data, type);
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+                showLoading(type, false);
+                resultsContainer.innerHTML = '<div class="search-result-item text-red-600">Gagal mencari alamat. Coba lagi.</div>';
+                resultsContainer.classList.remove('hidden');
+            });
+    }
+
+    // Display search results
+    function displaySearchResults(results, type) {
+        const resultsContainer = document.getElementById(type + '_search_results');
+        
+        if (results.length === 0) {
+            resultsContainer.innerHTML = '<div class="search-result-item text-gray-500">Tidak ada hasil ditemukan</div>';
+            resultsContainer.classList.remove('hidden');
+            return;
+        }
+
+        let html = '';
+        results.forEach(result => {
+            const displayName = result.display_name;
+            const shortName = displayName.split(',').slice(0, 3).join(', ');
+            
+            html += `
+                <div class="search-result-item" onclick="selectSearchResult('${result.lat}', '${result.lon}', '${displayName.replace(/'/g, "\\'")}', '${type}')">
+                    <div class="font-medium text-gray-800">${shortName}</div>
+                    <div class="text-sm text-gray-500">${displayName}</div>
+                </div>
+            `;
+        });
+
+        resultsContainer.innerHTML = html;
+        resultsContainer.classList.remove('hidden');
+    }
+
+    // Select search result
+    function selectSearchResult(lat, lon, displayName, type) {
+        // Set coordinates
+        document.getElementById(type + '_latitude').value = lat;
+        document.getElementById(type + '_longitude').value = lon;
+        
+        // Set address text
+        document.getElementById(type + '_address').value = displayName;
+        
+        // Hide search results
+        hideSearchResults(type);
+        
+        // Add marker to map
+        addMarker(lat, lon, type);
+        
+        // Update route if both locations are set
+        updateRoute();
+    }
+
+    // Add marker to map
+    function addMarker(lat, lon, type) {
+        const latLng = L.latLng(lat, lon);
+        
+        // Remove existing marker
+        if (type === 'pickup' && pickupMarker) {
+            map.removeLayer(pickupMarker);
+        } else if (type === 'destination' && destinationMarker) {
+            map.removeLayer(destinationMarker);
+        }
+        
+        // Create new marker
+        const icon = L.divIcon({
+            html: `<div class="w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-xs font-bold" style="background-color: ${type === 'pickup' ? '#10b981' : '#ef4444'}">
+                ${type === 'pickup' ? 'A' : 'B'}
+            </div>`,
+            className: 'custom-marker',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+        
+        const marker = L.marker(latLng, { icon: icon }).addTo(map);
+        
+        // Store marker reference
+        if (type === 'pickup') {
+            pickupMarker = marker;
+        } else {
+            destinationMarker = marker;
+        }
+        
+        // Pan map to show marker
+        map.setView(latLng, Math.max(map.getZoom(), 15));
+    }
+
+    // Update route between pickup and destination
+    function updateRoute() {
+        const pickupLat = document.getElementById('pickup_latitude').value;
+        const pickupLon = document.getElementById('pickup_longitude').value;
+        const destLat = document.getElementById('destination_latitude').value;
+        const destLon = document.getElementById('destination_longitude').value;
+        
+        if (pickupLat && pickupLon && destLat && destLon) {
+            // Remove existing route
+            if (routePolyline) {
+                map.removeLayer(routePolyline);
+            }
+            
+            // Create simple straight line route
+            const routeCoords = [
+                [parseFloat(pickupLat), parseFloat(pickupLon)],
+                [parseFloat(destLat), parseFloat(destLon)]
+            ];
+            
+            routePolyline = L.polyline(routeCoords, {
+                color: '#3b82f6',
+                weight: 4,
+                opacity: 0.8
+            }).addTo(map);
+            
+            // Fit map to show both markers
+            const group = new L.featureGroup([pickupMarker, destinationMarker]);
+            map.fitBounds(group.getBounds().pad(0.1));
+        }
+    }
+
+    // Hide search results
+    function hideSearchResults(type) {
+        document.getElementById(type + '_search_results').classList.add('hidden');
+    }
+
+    // Show/hide loading spinner
+    function showLoading(type, show) {
+        const loadingElement = document.getElementById(type + '_loading');
+        if (show) {
+            loadingElement.classList.remove('hidden');
+        } else {
+            loadingElement.classList.add('hidden');
+        }
+    }
+
+    // Get current location
+    function getCurrentLocation(type) {
+        const button = document.getElementById('currentLocationText');
+        
+        if (navigator.geolocation) {
+            button.textContent = 'Mencari...';
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    
+                    // Reverse geocoding to get address
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const address = data.display_name || `${lat}, ${lon}`;
+                            
+                            // Set values
+                            document.getElementById(type + '_latitude').value = lat;
+                            document.getElementById(type + '_longitude').value = lon;
+                            document.getElementById(type + '_address').value = address;
+                            
+                            // Add marker
+                            addMarker(lat, lon, type);
+                            
+                            // Update route
+                            updateRoute();
+                            
+                            button.textContent = 'Lokasi Saya';
+                        })
+                        .catch(error => {
+                            console.error('Reverse geocoding error:', error);
+                            alert('Gagal mendapatkan alamat. Coba lagi.');
+                            button.textContent = 'Lokasi Saya';
+                        });
+                },
+                function(error) {
+                    console.error('Geolocation error:', error);
+                    alert('Gagal mendapatkan lokasi. Pastikan GPS diaktifkan.');
+                    button.textContent = 'Lokasi Saya';
+                }
+            );
+        } else {
+            alert('Geolocation tidak didukung browser ini.');
+        }
+    }
+
+    // Set location mode for map selection
+    function setLocationMode(type) {
+        currentLocationMode = type;
+        
+        // Show map controls
+        document.getElementById('mapControls').classList.remove('hidden');
+        document.getElementById('mapMode').textContent = `Mode: Pilih lokasi ${type === 'pickup' ? 'penjemputan' : 'tujuan'}`;
+        
+        // Update instructions
+        document.getElementById('mapInstructions').innerHTML = 
+            `<i class="fas fa-hand-pointer text-blue-500 mr-1"></i> 
+            Klik pada peta untuk memilih lokasi ${type === 'pickup' ? 'penjemputan' : 'tujuan'}`;
+        
+        // Change cursor
+        document.getElementById('map').style.cursor = 'crosshair';
     }
 
     // Handle map click
     function handleMapClick(e) {
         const lat = e.latlng.lat;
-        const lng = e.latlng.lng;
+        const lon = e.latlng.lng;
         
         // Remove temp marker if exists
         if (tempMarker) {
@@ -439,362 +753,210 @@
         }
         
         // Add temporary marker
-        tempMarker = L.marker([lat, lng], {
-            icon: L.icon({
-                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34],
-                shadowSize: [41, 41]
-            })
-        }).addTo(map);
+        const icon = L.divIcon({
+            html: `<div class="w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white text-xs font-bold animate-pulse" style="background-color: ${currentLocationMode === 'pickup' ? '#10b981' : '#ef4444'}">
+                ${currentLocationMode === 'pickup' ? 'A' : 'B'}
+            </div>`,
+            className: 'custom-marker',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
         
-        // Store coordinates
-        window.selectedLat = lat;
-        window.selectedLng = lng;
+        tempMarker = L.marker([lat, lon], { icon: icon }).addTo(map);
         
-        // Get address using reverse geocoding
-        reverseGeocode(lat, lng, currentLocationMode);
+        // Store temporary coordinates
+        window.tempLat = lat;
+        window.tempLon = lon;
     }
 
-    // Reverse geocoding using Nominatim
-    function reverseGeocode(lat, lng, locationType) {
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`)
-            .then(response => response.json())
-            .then(data => {
-                const address = data.display_name || `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
-                
-                if (locationType === 'pickup') {
-                    document.getElementById('pickup_address').value = address;
-                } else if (locationType === 'destination') {
-                    document.getElementById('destination_address').value = address;
-                }
-            })
-            .catch(error => {
-                console.log('Reverse geocoding error:', error);
-                const address = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
-                if (locationType === 'pickup') {
-                    document.getElementById('pickup_address').value = address;
-                } else if (locationType === 'destination') {
-                    document.getElementById('destination_address').value = address;
-                }
-            });
-    }
-
-    // Set location mode
-    function setLocationMode(type) {
-        currentLocationMode = type;
-        document.getElementById('mapControls').classList.remove('hidden');
-        document.getElementById('mapMode').textContent = `Mode: Pilih lokasi ${type === 'pickup' ? 'penjemputan' : 'tujuan'}`;
-        document.getElementById('mapInstructions').innerHTML = `
-            <i class="fas fa-info-circle text-blue-500 mr-1"></i>
-            Klik pada peta untuk memilih lokasi ${type === 'pickup' ? 'penjemputan' : 'tujuan'}
-        `;
-    }
-
-    // Confirm location
+    // Confirm location selection
     function confirmLocation() {
-        if (!window.selectedLat || !window.selectedLng) {
-            alert('Silakan pilih lokasi pada peta terlebih dahulu');
+        if (!tempMarker) {
+            alert('Pilih lokasi di peta terlebih dahulu.');
             return;
         }
         
-        const lat = window.selectedLat;
-        const lng = window.selectedLng;
-        const address = currentLocationMode === 'pickup' ? 
-            document.getElementById('pickup_address').value : 
-            document.getElementById('destination_address').value;
+        const lat = window.tempLat;
+        const lon = window.tempLon;
         
-        // Remove temp marker
-        if (tempMarker) {
-            map.removeLayer(tempMarker);
-        }
-        
-        if (currentLocationMode === 'pickup') {
-            // Set coordinates
-            document.getElementById('pickup_latitude').value = lat;
-            document.getElementById('pickup_longitude').value = lng;
-            
-            // Remove existing pickup marker
-            if (pickupMarker) {
-                map.removeLayer(pickupMarker);
-            }
-            
-            // Add pickup marker
-            pickupMarker = L.marker([lat, lng], {
-                icon: L.icon({
-                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41],
-                    popupAnchor: [1, -34],
-                    shadowSize: [41, 41]
-                })
-            }).addTo(map).bindPopup('Lokasi Penjemputan').openPopup();
-            
-        } else if (currentLocationMode === 'destination') {
-            // Set coordinates
-            document.getElementById('destination_latitude').value = lat;
-            document.getElementById('destination_longitude').value = lng;
-            
-            // Remove existing destination marker
-            if (destinationMarker) {
-                map.removeLayer(destinationMarker);
-            }
-            
-            // Add destination marker
-            destinationMarker = L.marker([lat, lng], {
-                icon: L.icon({
-                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41],
-                    popupAnchor: [1, -34],
-                    shadowSize: [41, 41]
-                })
-            }).addTo(map).bindPopup('Lokasi Tujuan').openPopup();
-        }
-        
-        // Clear location mode
-        cancelLocationMode();
-        
-        // Draw route if both locations are set
-        drawRoute();
+        // Reverse geocoding
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`)
+            .then(response => response.json())
+            .then(data => {
+                const address = data.display_name || `${lat}, ${lon}`;
+                
+                // Set values
+                document.getElementById(currentLocationMode + '_latitude').value = lat;
+                document.getElementById(currentLocationMode + '_longitude').value = lon;
+                document.getElementById(currentLocationMode + '_address').value = address;
+                
+                // Remove temp marker and add permanent marker
+                if (tempMarker) {
+                    map.removeLayer(tempMarker);
+                    tempMarker = null;
+                }
+                
+                addMarker(lat, lon, currentLocationMode);
+                
+                // Update route
+                updateRoute();
+                
+                // Cancel location mode
+                cancelLocationMode();
+            })
+            .catch(error => {
+                console.error('Reverse geocoding error:', error);
+                alert('Gagal mendapatkan alamat. Coba lagi.');
+            });
     }
 
     // Cancel location mode
     function cancelLocationMode() {
         currentLocationMode = null;
+        
+        // Hide map controls
         document.getElementById('mapControls').classList.add('hidden');
-        document.getElementById('mapInstructions').innerHTML = `
-            <i class="fas fa-info-circle text-blue-500 mr-1"></i>
-            Klik tombol "Pilih di Peta" untuk menentukan lokasi
-        `;
+        
+        // Reset instructions
+        document.getElementById('mapInstructions').innerHTML = 
+            '<i class="fas fa-info-circle text-blue-500 mr-1"></i> Ketik alamat di kotak pencarian atau klik "Pilih di Peta"';
+        
+        // Reset cursor
+        document.getElementById('map').style.cursor = '';
         
         // Remove temp marker
         if (tempMarker) {
             map.removeLayer(tempMarker);
             tempMarker = null;
         }
-        
-        // Clear selected coordinates
-        window.selectedLat = null;
-        window.selectedLng = null;
     }
 
-    // Draw route between pickup and destination
-    function drawRoute() {
-        const pickupLat = document.getElementById('pickup_latitude').value;
-        const pickupLng = document.getElementById('pickup_longitude').value;
-        const destLat = document.getElementById('destination_latitude').value;
-        const destLng = document.getElementById('destination_longitude').value;
-        
-        if (pickupLat && pickupLng && destLat && destLng) {
-            // Get route from OSRM
-            getOSRMRoute(pickupLat, pickupLng, destLat, destLng);
-        }
-    }
-
-    // Get route from OSRM API
-    function getOSRMRoute(pickupLat, pickupLng, destLat, destLng) {
-        const url = `https://router.project-osrm.org/route/v1/driving/${pickupLng},${pickupLat};${destLng},${destLat}?overview=full&geometries=polyline`;
-        
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                if (data.routes && data.routes.length > 0) {
-                    drawOSRMRoute(data.routes[0].geometry);
-                } else {
-                    // Fallback to simple line
-                    drawSimpleRoute(pickupLat, pickupLng, destLat, destLng);
-                }
-            })
-            .catch(error => {
-                console.log('OSRM route error:', error);
-                // Fallback to simple line
-                drawSimpleRoute(pickupLat, pickupLng, destLat, destLng);
-            });
-    }
-
-    // Draw OSRM route using polyline
-    function drawOSRMRoute(polyline) {
-        // Remove existing route
-        if (routeControl) {
-            map.removeLayer(routeControl);
-        }
-        
-        // Decode polyline
-        const coordinates = L.Polyline.fromEncoded(polyline).getLatLngs();
-        
-        // Draw route
-        routeControl = L.polyline(coordinates, {
-            color: '#3B82F6',
-            weight: 4,
-            opacity: 0.8
-        }).addTo(map);
-        
-        // Fit map to route bounds
-        if (coordinates.length > 0) {
-            map.fitBounds(routeControl.getBounds(), { padding: [20, 20] });
-        }
-    }
-
-    // Get current location
-    function getCurrentLocation(type) {
-        const button = document.getElementById('currentLocationText');
-        button.innerHTML = `
-            <i class="fas fa-spinner fa-spin mr-1"></i>
-            Mendeteksi lokasi...
-        `;
-        
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(position) {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                
-                document.getElementById(type + '_latitude').value = lat;
-                document.getElementById(type + '_longitude').value = lng;
-                
-                // Update map
-                map.setView([lat, lng], 15);
-                
-                // Add marker
-                if (type === 'pickup') {
-                    if (pickupMarker) {
-                        map.removeLayer(pickupMarker);
-                    }
-                    pickupMarker = L.marker([lat, lng], {
-                        icon: L.icon({
-                            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                            iconSize: [25, 41],
-                            iconAnchor: [12, 41],
-                            popupAnchor: [1, -34],
-                            shadowSize: [41, 41]
-                        })
-                    }).addTo(map).bindPopup('Lokasi Anda').openPopup();
-                }
-                
-                // Reverse geocoding
-                reverseGeocode(lat, lng, type);
-                
-                // Draw route if both locations are set
-                drawRoute();
-                
-                // Reset button text
-                button.innerHTML = `
-                    <i class="fas fa-check mr-1"></i>
-                    Lokasi ditemukan
-                `;
-                
-                setTimeout(() => {
-                    button.textContent = 'Lokasi Saya';
-                }, 2000);
-                
-            }, function(error) {
-                alert('Gagal mendapatkan lokasi: ' + error.message);
-                button.textContent = 'Lokasi Saya';
-            });
-        } else {
-            alert('Browser tidak mendukung geolokasi');
-            button.textContent = 'Lokasi Saya';
-        }
-    }
-
-    // Calculate fare using OSRM
+    // Calculate fare
     function calculateFare() {
         const pickupLat = document.getElementById('pickup_latitude').value;
-        const pickupLng = document.getElementById('pickup_longitude').value;
+        const pickupLon = document.getElementById('pickup_longitude').value;
         const destLat = document.getElementById('destination_latitude').value;
-        const destLng = document.getElementById('destination_longitude').value;
-        const serviceType = document.querySelector('input[name="service_type"]:checked')?.value;
+        const destLon = document.getElementById('destination_longitude').value;
+        const serviceType = document.querySelector('input[name="service_type"]:checked').value;
         
-        if (!pickupLat || !pickupLng || !destLat || !destLng || !serviceType) {
-            alert('Silakan lengkapi lokasi penjemputan, tujuan, dan pilih jenis kendaraan');
+        if (!pickupLat || !pickupLon || !destLat || !destLon) {
+            alert('Silakan pilih lokasi penjemputan dan tujuan terlebih dahulu.');
             return;
         }
         
-        // Show loading state
-        document.getElementById('fareDetails').innerHTML = `
-            <div class="flex items-center justify-center py-4">
-                <i class="fas fa-spinner fa-spin text-blue-500 text-xl mr-2"></i>
-                <span class="text-blue-500">Menghitung tarif...</span>
-            </div>
-        `;
-        document.getElementById('fareEstimation').classList.remove('hidden');
+        // Calculate distance (Haversine formula)
+        const distance = calculateDistance(
+            parseFloat(pickupLat), parseFloat(pickupLon),
+            parseFloat(destLat), parseFloat(destLon)
+        );
         
-        // Get route from OSRM
-        const url = `https://router.project-osrm.org/route/v1/driving/${pickupLng},${pickupLat};${destLng},${destLat}?overview=false`;
+        // Calculate fare based on service type
+        let baseFare, perKmRate;
         
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-                    throw new Error('Gagal mendapatkan rute');
-                }
-                
-                const route = data.routes[0];
-                const distance = (route.distance / 1000).toFixed(1); // in km
-                const duration = Math.ceil(route.duration / 60); // in minutes
-                
-                // Calculate fare based on service type
-                let fare;
-                if (serviceType === 'motorcycle') {
-                    // Motor: 9000 for first 2 km, then 2500 per km, plus 200 per minute
-                    fare = 8800 + Math.max(0, distance - 4) * 2000;
-                } else {
-                    // Car: 11000 for first 2 km, then 3500 per km, plus 200 per minute
-                    fare = 11000 + Math.max(0, distance - 4) * 3500;
-                }
-                
-                // Format fare
-                fare = Math.round(fare);
-                
-                // Display result
-                document.getElementById('fareDetails').innerHTML = `
-                    <div class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="text-center p-3 bg-gray-50 rounded-lg">
-                                <p class="text-sm text-gray-600">Jarak</p>
-                                <p class="font-semibold">${distance} km</p>
-                            </div>
-                            <div class="text-center p-3 bg-gray-50 rounded-lg">
-                                <p class="text-sm text-gray-600">Estimasi Waktu</p>
-                                <p class="font-semibold">${duration} menit</p>
-                            </div>
-                        </div>
-                        <div class="text-center p-3 ${serviceType === 'motorcycle' ? 'bg-green-50' : 'bg-blue-50'} rounded-lg">
-                            <p class="text-sm ${serviceType === 'motorcycle' ? 'text-green-600' : 'text-blue-600'}">Tarif ${serviceType === 'motorcycle' ? 'Motor' : 'Mobil'}</p>
-                            <p class="font-bold text-lg ${serviceType === 'motorcycle' ? 'text-green-700' : 'text-blue-700'}">Rp ${fare.toLocaleString('id-ID')}</p>
-                        </div>
-                        <div class="text-sm text-gray-600">
-                            <p>* Tarif sudah termasuk komisi driver</p>
-                        </div>
-                    </div>
-                `;
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('fareDetails').innerHTML = `
-                    <div class="p-3 bg-red-50 text-red-700 rounded-lg">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
-                        Gagal menghitung tarif: ${error.message || 'Silakan coba lagi'}
-                    </div>
-                `;
-            });
+        if (serviceType === 'motorcycle') {
+            baseFare = 5000;
+            perKmRate = 3000;
+        } else {
+            baseFare = 8000;
+            perKmRate = 4000;
+        }
+        
+        const fare = baseFare + (distance * perKmRate);
+        const estimatedTime = Math.round(distance * 3); // 3 minutes per km estimate
+        
+        // Display fare estimation
+        displayFareEstimation(fare, distance, estimatedTime, serviceType);
     }
 
-    // Initialize map when page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        initMap();
+    // Calculate distance using Haversine formula
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Earth's radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
+    // Display fare estimation
+    function displayFareEstimation(fare, distance, estimatedTime, serviceType) {
+        const fareContainer = document.getElementById('fareEstimation');
+        const fareDetails = document.getElementById('fareDetails');
         
-        // Fix map size after load
-        setTimeout(function() {
-            if (map) map.invalidateSize();
-        }, 100);
+        const vehicleIcon = serviceType === 'motorcycle' ? 'fa-motorcycle' : 'fa-car';
+        const vehicleText = serviceType === 'motorcycle' ? 'Motor' : 'Mobil';
+        const vehicleColor = serviceType === 'motorcycle' ? 'text-green-600' : 'text-blue-600';
+        
+        fareDetails.innerHTML = `
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas ${vehicleIcon} text-2xl ${vehicleColor}"></i>
+                        <div>
+                            <div class="font-semibold text-gray-800">${vehicleText}</div>
+                            <div class="text-sm text-gray-500">Estimasi ${estimatedTime} menit</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-gray-800">Rp ${fare.toLocaleString('id-ID')}</div>
+                        <div class="text-sm text-gray-500">${distance.toFixed(1)} km</div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h4 class="font-semibold text-gray-800 mb-2">Rincian Tarif</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span>Tarif Dasar</span>
+                            <span>Rp ${(serviceType === 'motorcycle' ? 5000 : 8000).toLocaleString('id-ID')}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Jarak (${distance.toFixed(1)} km)</span>
+                            <span>Rp ${((fare - (serviceType === 'motorcycle' ? 5000 : 8000))).toLocaleString('id-ID')}</span>
+                        </div>
+                        <div class="border-t pt-2 flex justify-between font-semibold">
+                            <span>Total</span>
+                            <span>Rp ${fare.toLocaleString('id-ID')}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <div class="flex items-center text-blue-800 mb-2">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <span class="font-medium">Informasi Tambahan</span>
+                    </div>
+                    <ul class="text-sm text-blue-700 space-y-1">
+                        <li>• Tarif sudah termasuk biaya aplikasi</li>
+                        <li>• Tidak ada biaya tambahan untuk bagasi ringan</li>
+                        <li>• Pembayaran bisa tunai atau digital</li>
+                        <li>• Estimasi waktu dapat berubah sesuai kondisi lalu lintas</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+        
+        fareContainer.classList.remove('hidden');
+        
+        // Scroll to fare estimation
+        fareContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
     });
     </script>
-
 </body>
 </html>
