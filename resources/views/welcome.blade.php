@@ -211,7 +211,7 @@
                                     Lokasi Penjemputan
                                 </label>
                                 <div class="search-input-container">
-                                    <textarea id="pickup_address" rows="2" class="w-full border border-gray-300 rounded-lg p-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none" placeholder="Cari alamat... (contoh: DP Mall Semarang)"></textarea>
+                                    <textarea id="pickup_address" rows="2" class="w-full border border-gray-300 rounded-lg p-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none" placeholder="Cari alamat Penjemputan..."></textarea>
                                     <div id="pickup_search_results" class="search-results hidden"></div>
                                     <input type="hidden" id="pickup_latitude">
                                     <input type="hidden" id="pickup_longitude">
@@ -238,7 +238,7 @@
                                     Lokasi Tujuan
                                 </label>
                                 <div class="search-input-container">
-                                    <textarea id="destination_address" rows="2" class="w-full border border-gray-300 rounded-lg p-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none" placeholder="Cari alamat... (contoh: Paragon Mall Semarang)"></textarea>
+                                    <textarea id="destination_address" rows="2" class="w-full border border-gray-300 rounded-lg p-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none" placeholder="Cari alamat Tujuan..."></textarea>
                                     <div id="destination_search_results" class="search-results hidden"></div>
                                     <input type="hidden" id="destination_latitude">
                                     <input type="hidden" id="destination_longitude">
@@ -322,11 +322,11 @@
                 <div class="bg-gray-50 border-t border-gray-200 p-6 text-center">
                     <p class="text-gray-600 mb-3">Siap memesan perjalanan?</p>
                     <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                        <a href="#" class="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all">
+                        <a href="{{ route('register') }}" class="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all">
                             <i class="fas fa-user-plus mr-2"></i>
                             Daftar Sekarang
                         </a>
-                        <a href="#" class="inline-flex items-center justify-center px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                        <a href="{{ route('login') }}" class="inline-flex items-center justify-center px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
                             <i class="fas fa-sign-in-alt mr-2"></i>
                             Masuk
                         </a>
@@ -363,7 +363,7 @@
                         <span>Jadwal Fleksibel</span>
                     </div>
                 </div>
-                <a href="#" 
+                <a href="{{ route('register') }}" 
                    class="inline-flex items-center px-8 py-4 bg-white text-green-600 rounded-full font-bold text-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300">
                     <i class="fas fa-motorcycle mr-2"></i>
                     Daftar Jadi Driver
@@ -427,7 +427,7 @@
             <div class="border-t border-gray-800 pt-8 text-center">
                 <p class="text-gray-400">
                     &copy; 2024 AnterinAja. Semua hak dilindungi. 
-                    <span class="text-blue-400">Dibuat dengan ❤️ di Indonesia</span>
+                    <span class="text-blue-400">Dibuat dengan @kodeframe dengan sepenuh hati ❤️</span>
                 </p>
             </div>
         </div>
@@ -633,34 +633,53 @@
 
     // Update route between pickup and destination
     function updateRoute() {
-        const pickupLat = document.getElementById('pickup_latitude').value;
-        const pickupLon = document.getElementById('pickup_longitude').value;
-        const destLat = document.getElementById('destination_latitude').value;
-        const destLon = document.getElementById('destination_longitude').value;
-        
-        if (pickupLat && pickupLon && destLat && destLon) {
-            // Remove existing route
-            if (routePolyline) {
-                map.removeLayer(routePolyline);
-            }
-            
-            // Create simple straight line route
-            const routeCoords = [
-                [parseFloat(pickupLat), parseFloat(pickupLon)],
-                [parseFloat(destLat), parseFloat(destLon)]
-            ];
-            
-            routePolyline = L.polyline(routeCoords, {
-                color: '#3b82f6',
-                weight: 4,
-                opacity: 0.8
-            }).addTo(map);
-            
-            // Fit map to show both markers
-            const group = new L.featureGroup([pickupMarker, destinationMarker]);
-            map.fitBounds(group.getBounds().pad(0.1));
-        }
+    const pickupLat = document.getElementById('pickup_latitude').value;
+    const pickupLon = document.getElementById('pickup_longitude').value;
+    const destLat = document.getElementById('destination_latitude').value;
+    const destLon = document.getElementById('destination_longitude').value;
+    const serviceType = document.querySelector('input[name="service_type"]:checked')?.value;
+
+    if (pickupLat && pickupLon && destLat && destLon) {
+        const url = `https://router.project-osrm.org/route/v1/driving/${pickupLon},${pickupLat};${destLon},${destLat}?overview=full&geometries=geojson`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (!data.routes || data.routes.length === 0) {
+                    alert('Gagal menemukan rute jalan.');
+                    return;
+                }
+
+                const route = data.routes[0];
+                const routeCoords = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                const distanceKm = route.distance / 1000;
+
+                // Hapus garis lama
+                if (routePolyline) map.removeLayer(routePolyline);
+                routePolyline = L.polyline(routeCoords, { color: '#3b82f6', weight: 4 }).addTo(map);
+
+                // Tampilkan semua marker
+                const group = new L.featureGroup([pickupMarker, destinationMarker]);
+                map.fitBounds(group.getBounds().pad(0.1));
+
+                // Hitung ongkir
+                const baseFare = serviceType === 'motorcycle' ? 8000 : 11000;
+                const perKmRate = serviceType === 'motorcycle' ? 2000 : 3500;
+                const extraDistance = distanceKm > 4 ? (distanceKm - 4) : 0;
+                const extraFare = Math.round(extraDistance * perKmRate);
+                const subtotal = baseFare + extraFare;
+                const commission = Math.ceil(subtotal * 0.10);
+                const totalFare = subtotal + commission;
+                const estimatedTime = Math.round(distanceKm * 3);
+
+                displayFareEstimation(totalFare, distanceKm, estimatedTime, serviceType);
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Gagal mengambil data rute jalan.');
+            });
     }
+}
 
     // Hide search results
     function hideSearchResults(type) {
@@ -833,40 +852,41 @@
 
     // Calculate fare
     function calculateFare() {
-        const pickupLat = document.getElementById('pickup_latitude').value;
-        const pickupLon = document.getElementById('pickup_longitude').value;
-        const destLat = document.getElementById('destination_latitude').value;
-        const destLon = document.getElementById('destination_longitude').value;
-        const serviceType = document.querySelector('input[name="service_type"]:checked').value;
-        
-        if (!pickupLat || !pickupLon || !destLat || !destLon) {
-            alert('Silakan pilih lokasi penjemputan dan tujuan terlebih dahulu.');
-            return;
-        }
-        
-        // Calculate distance (Haversine formula)
-        const distance = calculateDistance(
-            parseFloat(pickupLat), parseFloat(pickupLon),
-            parseFloat(destLat), parseFloat(destLon)
-        );
-        
-        // Calculate fare based on service type
-        let baseFare, perKmRate;
-        
-        if (serviceType === 'motorcycle') {
-            baseFare = 5000;
-            perKmRate = 3000;
-        } else {
-            baseFare = 8000;
-            perKmRate = 4000;
-        }
-        
-        const fare = baseFare + (distance * perKmRate);
-        const estimatedTime = Math.round(distance * 3); // 3 minutes per km estimate
-        
-        // Display fare estimation
-        displayFareEstimation(fare, distance, estimatedTime, serviceType);
+    const pickupLat = document.getElementById('pickup_latitude').value;
+    const pickupLon = document.getElementById('pickup_longitude').value;
+    const destLat = document.getElementById('destination_latitude').value;
+    const destLon = document.getElementById('destination_longitude').value;
+    const serviceType = document.querySelector('input[name="service_type"]:checked').value;
+
+    if (!pickupLat || !pickupLon || !destLat || !destLon) {
+        alert('Silakan pilih lokasi penjemputan dan tujuan terlebih dahulu.');
+        return;
     }
+
+    const distance = calculateDistance(
+        parseFloat(pickupLat), parseFloat(pickupLon),
+        parseFloat(destLat), parseFloat(destLon)
+    );
+
+    let baseFare, perKmRate;
+
+    if (serviceType === 'motorcycle') {
+        baseFare = 8000;
+        perKmRate = 2000;
+    } else {
+        baseFare = 11000;
+        perKmRate = 3500;
+    }
+
+    const extraDistance = distance > 4 ? (distance - 4) : 0;
+    const extraFare = Math.round(extraDistance * perKmRate);
+    const subtotal = baseFare + extraFare;
+    const commission = Math.ceil(subtotal * 0.10);
+    const fare = subtotal + commission;
+
+    const estimatedTime = Math.round(distance * 3);
+    displayFareEstimation(fare, distance, estimatedTime, serviceType);
+}
 
     // Calculate distance using Haversine formula
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -881,68 +901,81 @@
     }
 
     // Display fare estimation
-    function displayFareEstimation(fare, distance, estimatedTime, serviceType) {
-        const fareContainer = document.getElementById('fareEstimation');
-        const fareDetails = document.getElementById('fareDetails');
-        
-        const vehicleIcon = serviceType === 'motorcycle' ? 'fa-motorcycle' : 'fa-car';
-        const vehicleText = serviceType === 'motorcycle' ? 'Motor' : 'Mobil';
-        const vehicleColor = serviceType === 'motorcycle' ? 'text-green-600' : 'text-blue-600';
-        
-        fareDetails.innerHTML = `
-            <div class="space-y-4">
-                <div class="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-                    <div class="flex items-center space-x-3">
-                        <i class="fas ${vehicleIcon} text-2xl ${vehicleColor}"></i>
-                        <div>
-                            <div class="font-semibold text-gray-800">${vehicleText}</div>
-                            <div class="text-sm text-gray-500">Estimasi ${estimatedTime} menit</div>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-2xl font-bold text-gray-800">Rp ${fare.toLocaleString('id-ID')}</div>
-                        <div class="text-sm text-gray-500">${distance.toFixed(1)} km</div>
-                    </div>
-                </div>
-                
-                <div class="bg-gray-50 rounded-lg p-4">
-                    <h4 class="font-semibold text-gray-800 mb-2">Rincian Tarif</h4>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span>Tarif Dasar</span>
-                            <span>Rp ${(serviceType === 'motorcycle' ? 5000 : 8000).toLocaleString('id-ID')}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Jarak (${distance.toFixed(1)} km)</span>
-                            <span>Rp ${((fare - (serviceType === 'motorcycle' ? 5000 : 8000))).toLocaleString('id-ID')}</span>
-                        </div>
-                        <div class="border-t pt-2 flex justify-between font-semibold">
-                            <span>Total</span>
-                            <span>Rp ${fare.toLocaleString('id-ID')}</span>
-                        </div>
+    function displayFareEstimation(_, distance, estimatedTime, serviceType) {
+    const fareContainer = document.getElementById('fareEstimation');
+    const fareDetails = document.getElementById('fareDetails');
+
+    const baseFare = serviceType === 'motorcycle' ? 8000 : 11000;
+    const perKmRate = serviceType === 'motorcycle' ? 2000 : 3500;
+    const extraDistance = distance > 4 ? (distance - 4) : 0;
+
+    const rawExtraFare = extraDistance * perKmRate;
+    const subtotal = baseFare + rawExtraFare;
+    const commission = Math.ceil(subtotal * 0.10);
+    const totalFare = Math.round(subtotal + commission);
+    const extraFare = Math.round(rawExtraFare); // hanya untuk ditampilkan
+
+    const vehicleIcon = serviceType === 'motorcycle' ? 'fa-motorcycle' : 'fa-car';
+    const vehicleText = serviceType === 'motorcycle' ? 'Motor' : 'Mobil';
+    const vehicleColor = serviceType === 'motorcycle' ? 'text-green-600' : 'text-blue-600';
+
+    fareDetails.innerHTML = `
+        <div class="space-y-4">
+            <div class="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <i class="fas ${vehicleIcon} text-2xl ${vehicleColor}"></i>
+                    <div>
+                        <div class="font-semibold text-gray-800">${vehicleText}</div>
+                        <div class="text-sm text-gray-500">Estimasi ${estimatedTime} menit</div>
                     </div>
                 </div>
-                
-                <div class="bg-blue-50 rounded-lg p-4">
-                    <div class="flex items-center text-blue-800 mb-2">
-                        <i class="fas fa-info-circle mr-2"></i>
-                        <span class="font-medium">Informasi Tambahan</span>
-                    </div>
-                    <ul class="text-sm text-blue-700 space-y-1">
-                        <li>• Tarif sudah termasuk biaya aplikasi</li>
-                        <li>• Tidak ada biaya tambahan untuk bagasi ringan</li>
-                        <li>• Pembayaran bisa tunai atau digital</li>
-                        <li>• Estimasi waktu dapat berubah sesuai kondisi lalu lintas</li>
-                    </ul>
+                <div class="text-right">
+                    <div class="text-2xl font-bold text-gray-800">Rp ${totalFare.toLocaleString('id-ID')}</div>
+                    <div class="text-sm text-gray-500">${distance.toFixed(1)} km</div>
                 </div>
             </div>
-        `;
-        
-        fareContainer.classList.remove('hidden');
-        
-        // Scroll to fare estimation
-        fareContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h4 class="font-semibold text-gray-800 mb-2">Rincian Tarif</h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span>Tarif Dasar (≤ 4 km)</span>
+                        <span>Rp ${baseFare.toLocaleString('id-ID')}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Biaya Tambahan (${extraDistance.toFixed(1)} km)</span>
+                        <span>Rp ${extraFare.toLocaleString('id-ID')}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Komisi 10%</span>
+                        <span>Rp ${commission.toLocaleString('id-ID')}</span>
+                    </div>
+                    <div class="border-t pt-2 flex justify-between font-semibold">
+                        <span>Total</span>
+                        <span>Rp ${totalFare.toLocaleString('id-ID')}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 rounded-lg p-4">
+                <div class="flex items-center text-blue-800 mb-2">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <span class="font-medium">Informasi Tambahan</span>
+                </div>
+                <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• Tarif sudah termasuk biaya aplikasi</li>
+                    <li>• Tidak ada biaya tambahan untuk bagasi ringan</li>
+                    <li>• Pembayaran bisa tunai atau digital</li>
+                    <li>• Estimasi waktu dapat berubah sesuai kondisi lalu lintas</li>
+                </ul>
+            </div>
+        </div>
+    `;
+
+    fareContainer.classList.remove('hidden');
+    fareContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 
     // Smooth scroll for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
