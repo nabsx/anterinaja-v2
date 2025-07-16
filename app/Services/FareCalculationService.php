@@ -56,8 +56,13 @@ class FareCalculationService
 
     $distanceFare = $perKmRate * max(0, $distanceKm - 4);
     $subtotal = $baseFare + $distanceFare;
-    $commission = $subtotal * 0.10;
-    $totalFare = $subtotal + $commission;
+    
+    // Calculate platform commission (what customer pays extra)
+    $platformCommission = $subtotal * config('fare.platform_commission', 0.10);
+    $customerTotal = $subtotal + $platformCommission;
+    
+    // Driver gets the subtotal (base + distance fare)
+    $driverEarning = $subtotal;
 
     return [
         'success' => true,
@@ -67,14 +72,17 @@ class FareCalculationService
             'time_fare' => 0,
             'subtotal' => $subtotal,
             'surcharges' => [
-                'commission' => $commission
+                'commission' => $platformCommission
             ],
-            'total_surcharge' => $commission,
-            'total' => $totalFare,
+            'total_surcharge' => $platformCommission,
+            'total' => $customerTotal, // This is what customer pays
+            'driver_earning' => $driverEarning, // This is what driver gets
             'breakdown' => [
                 'base_fare' => $baseFare,
                 'distance_fare' => $distanceFare,
-                'commission' => $commission,
+                'commission' => $platformCommission,
+                'customer_total' => $customerTotal,
+                'driver_earning' => $driverEarning,
             ]
         ]
     ];
@@ -166,6 +174,24 @@ class FareCalculationService
         ];
 
         return $rates[$vehicleType] ?? $this->perKmRate;
+    }
+
+    /**
+     * Get platform commission rate
+     */
+    public function getPlatformCommissionRate()
+    {
+        return config('fare.platform_commission', 0.10);
+    }
+
+    /**
+     * Calculate final customer fare (including commission)
+     */
+    public function calculateCustomerFare($baseFare, $distanceFare)
+    {
+        $subtotal = $baseFare + $distanceFare;
+        $commission = $subtotal * $this->getPlatformCommissionRate();
+        return $subtotal + $commission;
     }
 
     /**

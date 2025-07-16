@@ -24,6 +24,7 @@ class Order extends Model
         'vehicle_type',
         'distance_km',
         'duration_minutes',
+        'fare_amount',
         'estimated_fare',
         'actual_fare',
         'fare_breakdown',

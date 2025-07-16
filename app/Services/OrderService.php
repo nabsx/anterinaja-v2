@@ -57,10 +57,10 @@ class OrderService
                 throw new \Exception('Unable to calculate fare: ' . ($fareData['error'] ?? 'Fare calculation failed'));
             }
 
-            // Komisi platform
-            $driverFare = $fareData['data']['total'];
-            $platformCommission = round($driverFare * config('fare.platform_commission', 0.10));
-            $customerFare = $driverFare + $platformCommission;
+            // Use the fare data directly - don't recalculate commission
+            $customerFare = $fareData['data']['total']; // This already includes commission
+            $driverEarning = $fareData['data']['driver_earning']; // This is what driver gets
+            $platformCommission = $fareData['data']['surcharges']['commission'];
 
             // Create order
             $order = Order::create([
@@ -75,19 +75,10 @@ class OrderService
                 'vehicle_type' => $orderData['vehicle_type'] ?? 'car',
                 'distance_km' => $routeData['distance_km'],
                 'duration_minutes' => $routeData['duration_minutes'],
-                'fare_amount' => $customerFare,
-                'fare_breakdown' => json_encode([
-                    'base_fare' => $fareData['data']['base_fare'],
-                    'distance_fare' => $fareData['data']['distance_fare'],
-                    'time_fare' => $fareData['data']['time_fare'],
-                    'subtotal' => $fareData['data']['subtotal'],
-                    'surcharges' => $fareData['data']['surcharges'],
-                    'total_surcharge' => $fareData['data']['total_surcharge'],
-                    'total_driver' => $driverFare,
-                    'commission' => $platformCommission,
-                    'total_customer' => $customerFare,
-                    'breakdown' => $fareData['data']['breakdown']
-                ]),
+                'fare_amount' => $customerFare, // Use the calculated customer fare
+                'driver_earning' => $driverEarning,
+                'platform_commission' => $platformCommission,
+                'fare_breakdown' => json_encode($fareData['data']), // Store complete breakdown
                 'status' => 'pending',
                 'notes' => $orderData['notes'] ?? null,
                 'scheduled_at' => $orderData['scheduled_at'] ?? null,
@@ -157,15 +148,14 @@ class OrderService
                         $updateData['actual_fare'] = $additionalData['actual_fare'];
                     }
                     
-                    // Potong komisi platform
-                    $fareBreakdown = json_decode($order->fare_breakdown, true);
-                    $commission = $fareBreakdown['commission'] ?? 0;
-
-                    if ($driver) {
-                        // Add fare to driver balance minus commission
-                        $driverEarning = $order->estimated_fare - $commission;
-                        $driver->balance += $driverEarning;
-                        $driver->save();
+                    // Use the stored driver earning instead of recalculating
+                    if ($order->driver_id) {
+                        $driver = Driver::find($order->driver_id);
+                        if ($driver) {
+                            // Add the pre-calculated driver earning to driver balance
+                            $driver->balance += $order->driver_earning;
+                            $driver->save();
+                        }
                     }
                     break;
 

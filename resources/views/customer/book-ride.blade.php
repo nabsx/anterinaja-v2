@@ -886,61 +886,70 @@ function calculateFare(isAutoCalculation = false) {
             const driverFare = fareData.total_fare - fareData.surcharges.commission;
             // Display modern fare estimation
             document.getElementById('fareDetails').innerHTML = `
-                <div class="space-y-4">
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        <div class="text-center p-3 bg-gray-50 rounded-lg">
-                            <svg class="h-5 w-5 mx-auto mb-1 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
-                            </svg>
-                            <p class="text-sm text-gray-600">Jarak</p>
-                            <p class="font-semibold">${fareData.distance} km</p>
-                        </div>
-                        <div class="text-center p-3 bg-gray-50 rounded-lg">
-                            <svg class="h-5 w-5 mx-auto mb-1 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <p class="text-sm text-gray-600">Durasi</p>
-                            <p class="font-semibold">${fareData.duration} min</p>
-                        </div>
-                        <div class="text-center p-3 bg-blue-50 rounded-lg col-span-2 sm:col-span-1">
-                            <svg class="h-5 w-5 mx-auto mb-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                            </svg>
-                            <p class="text-sm text-blue-600">Tarif yang kamu bayar</p>
-                            <p class="font-bold text-lg text-blue-700">Rp ${fareData.total_fare.toLocaleString()}</p>
-                        </div>
-                    </div>
-                    
-                    <hr class="border-gray-200">
-                    
-                    <div class="space-y-2 text-sm">
-                    <div class="flex justify-between">
-                    
-                     <span class="text-gray-600">Tarif yang diterima driver:</span>
-                        <span class="font-semibold text-green-600">
-                            Rp ${(fareData.total_fare - fareData.surcharges.commission).toLocaleString()}
-                        </span> 
-                    </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Komisi:</span>
-                            <span>Rp ${fareData.surcharges.commission.toLocaleString()}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div class="flex items-start">
-                            <svg class="h-4 w-4 text-blue-600 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <div class="text-sm text-blue-800">
-                                <p>* Ini adalah estimasi tarif yang sudah termasuk komisi.</p>
-                                ${data.approximated ? '<p>* Dihitung secara otomatis</p>' : ''}
-                                ${isAutoCalculation ? '<p class="text-green-700">✓ Calculated automatically</p>' : ''}
-                            </div>
-                        </div>
-                    </div>
+    <div class="space-y-4">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <svg class="h-5 w-5 mx-auto mb-1 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                </svg>
+                <p class="text-sm text-gray-600">Jarak</p>
+                <p class="font-semibold">${fareData.formatted_distance}</p>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded-lg">
+                <svg class="h-5 w-5 mx-auto mb-1 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <p class="text-sm text-gray-600">Durasi</p>
+                <p class="font-semibold">${fareData.formatted_duration}</p>
+            </div>
+            <div class="text-center p-3 bg-blue-50 rounded-lg col-span-2 sm:col-span-1">
+                <svg class="h-5 w-5 mx-auto mb-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                </svg>
+                <p class="text-sm text-blue-600">Total yang Anda bayar</p>
+                <p class="font-bold text-lg text-blue-700">${fareData.formatted_fare}</p>
+            </div>
+        </div>
+        
+        <hr class="border-gray-200">
+        
+        <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+                <span class="text-gray-600">Tarif dasar:</span>
+                <span>Rp ${fareData.base_fare.toLocaleString()}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Tarif jarak (${fareData.distance} km):</span>
+                <span>Rp ${fareData.distance_fare.toLocaleString()}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Subtotal:</span>
+                <span>Rp ${fareData.subtotal.toLocaleString()}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">Komisi platform:</span>
+                <span>Rp ${fareData.surcharges.commission.toLocaleString()}</span>
+            </div>
+            <div class="flex justify-between border-t pt-2 font-semibold">
+                <span class="text-gray-900">Total:</span>
+                <span class="text-blue-600">${fareData.formatted_fare}</span>
+            </div>
+        </div>
+        
+        <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-start">
+                <svg class="h-4 w-4 text-blue-600 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="text-sm text-blue-800">
+                    <p><strong>Tarif final akan sama dengan estimasi ini.</strong></p>
+                    <p>Driver menerima: Rp ${(fareData.driver_earning || fareData.subtotal).toLocaleString()}</p>
+                    ${isAutoCalculation ? '<p class="text-green-700">✓ Dihitung otomatis</p>' : ''}
                 </div>
-            `;
+            </div>
+        </div>
+    </div>
+`;
             
             // Draw route on map if polyline is available
             if (data.polyline) {

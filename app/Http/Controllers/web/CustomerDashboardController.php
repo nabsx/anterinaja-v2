@@ -137,7 +137,7 @@ class CustomerDashboardController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'total_fare' => $fareData['data']['total'],
+                    'total_fare' => $fareData['data']['total'], // Customer pays this amount
                     'distance' => $routeData['distance_km'],
                     'duration' => $routeData['duration_minutes'],
                     'base_fare' => $fareData['data']['base_fare'],
@@ -146,6 +146,7 @@ class CustomerDashboardController extends Controller
                     'subtotal' => $fareData['data']['subtotal'],
                     'surcharges' => $fareData['data']['surcharges'],
                     'total_surcharge' => $fareData['data']['total_surcharge'],
+                    'driver_earning' => $fareData['data']['driver_earning'], // Add this for transparency
                     'formatted_fare' => 'Rp ' . number_format($fareData['data']['total'], 0, ',', '.'),
                     'formatted_distance' => number_format($routeData['distance_km'], 2) . ' km',
                     'formatted_duration' => ceil($routeData['duration_minutes']) . ' menit',
