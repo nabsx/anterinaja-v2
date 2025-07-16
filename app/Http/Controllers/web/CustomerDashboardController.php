@@ -10,6 +10,7 @@ use App\Services\FareCalculationService;
 use App\Services\OSRMService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class CustomerDashboardController extends Controller
 {
@@ -182,7 +183,7 @@ class CustomerDashboardController extends Controller
             'destination_address' => 'required|string',
             'destination_latitude' => 'required|numeric|between:-90,90',
             'destination_longitude' => 'required|numeric|between:-180,180',
-            'service_type' => 'required|in:motorcycle,car,van,truck', // This maps to vehicle_type
+            'service_type' => 'required|in:motorcycle,car,van,truck',
             'notes' => 'nullable|string|max:255',
         ]);
         
@@ -195,8 +196,8 @@ class CustomerDashboardController extends Controller
                 'destination_address' => $request->destination_address,
                 'destination_latitude' => $request->destination_latitude,
                 'destination_longitude' => $request->destination_longitude,
-                'order_type' => 'ride', // Explicitly set as ride service
-                'vehicle_type' => $request->service_type, // Map form field to vehicle_type
+                'order_type' => 'ride', // Explicitly set order type
+                'vehicle_type' => $request->service_type, // Map service_type to vehicle_type
                 'notes' => $request->notes,
             ]);
 
@@ -223,24 +224,73 @@ class CustomerDashboardController extends Controller
         }
     }
 
+    /**
+     * Cancel order - IMPROVED VERSION
+     */
     public function cancelOrder(Order $order)
     {
+        // Check ownership
         if ($order->customer_id !== Auth::id()) {
-            abort(403);
+            Log::warning('Unauthorized cancellation attempt', [
+                'order_id' => $order->id,
+                'customer_id' => $order->customer_id,
+                'auth_user_id' => Auth::id()
+            ]);
+            abort(403, 'Unauthorized access to order');
         }
 
-        if (!in_array($order->status, ['pending', 'accepted'])) {
-            return back()->with('error', 'Pesanan tidak dapat dibatalkan.');
+        // Log the cancellation attempt
+        Log::info('Customer attempting to cancel order', [
+            'order_id' => $order->id,
+            'current_status' => $order->status,
+            'customer_id' => Auth::id()
+        ]);
+
+        // Check if order can be cancelled using the model method
+        if (!$order->canBeCancelled()) {
+            Log::warning('Order cannot be cancelled due to status', [
+                'order_id' => $order->id,
+                'current_status' => $order->status
+            ]);
+            
+            return back()->with('error', 'Pesanan tidak dapat dibatalkan. Status saat ini: ' . $order->status_label);
         }
 
-        $result = $this->orderService->cancelOrder($order->id, 'Dibatalkan oleh customer', 'customer');
+        try {
+            $result = $this->orderService->cancelOrder(
+                $order->id, 
+                'Dibatalkan oleh customer', 
+                'customer'
+            );
 
-        if ($result['success']) {
-            return redirect()->route('customer.orders')
-                ->with('success', 'Pesanan berhasil dibatalkan.');
+            if ($result['success']) {
+                Log::info('Order cancelled successfully by customer', [
+                    'order_id' => $order->id,
+                    'customer_id' => Auth::id()
+                ]);
+                
+                return redirect()->route('customer.orders')
+                    ->with('success', 'Pesanan berhasil dibatalkan.');
+            } else {
+                Log::error('Order cancellation failed', [
+                    'order_id' => $order->id,
+                    'error' => $result['error'],
+                    'customer_id' => Auth::id()
+                ]);
+                
+                return back()->with('error', 'Gagal membatalkan pesanan: ' . $result['error']);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Exception during order cancellation', [
+                'order_id' => $order->id,
+                'customer_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()->with('error', 'Terjadi kesalahan sistem. Silakan coba lagi.');
         }
-
-        return back()->with('error', 'Gagal membatalkan pesanan.');
     }
 
     public function rateOrder(Request $request, Order $order)
@@ -254,9 +304,13 @@ class CustomerDashboardController extends Controller
             'comment' => 'nullable|string|max:255',
         ]);
 
-        $this->orderService->rateOrder($order, $request->rating, $request->comment, 'customer');
+        $result = $this->orderService->rateOrder($order, $request->rating, $request->comment, 'customer');
 
-        return back()->with('success', 'Rating berhasil diberikan.');
+        if ($result['success']) {
+            return back()->with('success', 'Rating berhasil diberikan.');
+        } else {
+            return back()->with('error', 'Gagal memberikan rating: ' . $result['error']);
+        }
     }
 
     public function findDrivers(Request $request)

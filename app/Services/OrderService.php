@@ -59,14 +59,14 @@ class OrderService
 
             // Use the fare data directly - don't recalculate commission
             $customerFare = $fareData['data']['total']; // This already includes commission
-            $driverEarning = $fareData['data']['driver_earning']; // This is what driver gets
-            $platformCommission = $fareData['data']['surcharges']['commission'];
+            $driverEarning = $fareData['data']['driver_earning'] ?? ($customerFare * 0.8); // Fallback if not set
+            $platformCommission = $fareData['data']['surcharges']['commission'] ?? ($customerFare * 0.2); // Fallback if not set
 
             // Create order
             $order = Order::create([
                 'order_code' => $this->generateOrderNumber(),
                 'customer_id' => $userId,
-                'order_type' => $orderData['order_type'] ?? 'ride', // Add this line
+                'order_type' => $orderData['order_type'] ?? 'ride',
                 'pickup_address' => $orderData['pickup_address'],
                 'pickup_latitude' => $orderData['pickup_latitude'],
                 'pickup_longitude' => $orderData['pickup_longitude'],
@@ -79,12 +79,10 @@ class OrderService
                 'fare_amount' => $customerFare,
                 'driver_earning' => $driverEarning,
                 'platform_commission' => $platformCommission,
-                'fare_breakdown' => json_encode($fareData['data']),
+                'fare_breakdown' => $fareData['data'] ?? [],
                 'status' => 'pending',
                 'notes' => $orderData['notes'] ?? null,
                 'scheduled_at' => $orderData['scheduled_at'] ?? null,
-                'created_at' => now(),
-                'updated_at' => now()
             ]);
 
             DB::commit();
@@ -94,7 +92,7 @@ class OrderService
 
             return [
                 'success' => true,
-                'data' => $order->load('user'),
+                'data' => $order->load('customer'),
                 'message' => 'Order created successfully'
             ];
 
@@ -163,6 +161,7 @@ class OrderService
                 case 'cancelled':
                     $updateData['cancelled_at'] = now();
                     $updateData['cancellation_reason'] = $additionalData['reason'] ?? null;
+                    $updateData['cancelled_by'] = $additionalData['cancelled_by'] ?? 'system';
                     break;
             }
 
@@ -173,7 +172,7 @@ class OrderService
 
             return [
                 'success' => true,
-                'data' => $order->fresh()->load(['user', 'driver']),
+                'data' => $order->fresh()->load(['customer', 'driver']),
                 'message' => "Order status updated to {$status}"
             ];
 
@@ -203,8 +202,8 @@ class OrderService
                     cos( radians( drivers.current_latitude ) ) * 
                     cos( radians( drivers.current_longitude ) - radians(?) ) + 
                     sin( radians(?) ) * 
-                    sin( radians( drivers.current_lat ) ) ) ) AS distance
-                ', [$order->pickup_lat, $order->pickup_longitude, $order->pickup_latitude])
+                    sin( radians( drivers.current_latitude ) ) ) ) AS distance
+                ', [$order->pickup_latitude, $order->pickup_longitude, $order->pickup_latitude])
                 ->where('is_active', true)
                 ->where('is_available', true)
                 ->where('vehicle_type', $order->vehicle_type)
@@ -229,26 +228,65 @@ class OrderService
     }
 
     /**
-     * Cancel order
+     * Cancel order - IMPROVED VERSION
      */
     public function cancelOrder($orderId, $reason, $cancelledBy = 'user')
     {
         try {
-            $order = Order::findOrFail($orderId);
+            DB::beginTransaction();
 
-            if (in_array($order->status, ['completed', 'cancelled'])) {
-                throw new \Exception('Cannot cancel order with status: ' . $order->status);
+            // Find the order with proper error handling
+            $order = Order::find($orderId);
+            
+            if (!$order) {
+                throw new \Exception('Order not found');
             }
 
+            // Check if order can be cancelled
+            if (!$this->canOrderBeCancelled($order)) {
+                throw new \Exception('Order cannot be cancelled. Current status: ' . $order->status);
+            }
+
+            // Log the cancellation attempt
+            Log::info('Attempting to cancel order', [
+                'order_id' => $orderId,
+                'current_status' => $order->status,
+                'cancelled_by' => $cancelledBy,
+                'reason' => $reason
+            ]);
+
+            // Update order status
             $order->update([
                 'status' => 'cancelled',
                 'cancelled_at' => now(),
                 'cancelled_by' => $cancelledBy,
-                'cancellation_reason' => $reason
+                'cancellation_reason' => $reason,
             ]);
+
+            // If driver was assigned, make them available again
+            if ($order->driver_id) {
+                $driver = Driver::find($order->driver_id);
+                if ($driver) {
+                    $driver->update([
+                        'is_available' => true,
+                    ]);
+                    
+                    Log::info('Driver made available after order cancellation', [
+                        'driver_id' => $driver->id,
+                        'order_id' => $orderId
+                    ]);
+                }
+            }
+
+            DB::commit();
 
             // Send cancellation notifications
             $this->sendCancellationNotification($order);
+
+            Log::info('Order cancelled successfully', [
+                'order_id' => $orderId,
+                'cancelled_by' => $cancelledBy
+            ]);
 
             return [
                 'success' => true,
@@ -257,7 +295,15 @@ class OrderService
             ];
 
         } catch (\Exception $e) {
-            Log::error('Order Cancellation Error: ' . $e->getMessage());
+            DB::rollBack();
+            
+            Log::error('Order Cancellation Error: ' . $e->getMessage(), [
+                'order_id' => $orderId,
+                'cancelled_by' => $cancelledBy,
+                'reason' => $reason,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return [
                 'success' => false,
                 'error' => $e->getMessage()
@@ -266,12 +312,22 @@ class OrderService
     }
 
     /**
+     * Check if order can be cancelled
+     */
+    private function canOrderBeCancelled($order)
+    {
+        $cancellableStatuses = ['pending', 'accepted', 'driver_arrived'];
+        
+        return in_array($order->status, $cancellableStatuses);
+    }
+
+    /**
      * Get order details
      */
     public function getOrderDetails($orderId)
     {
         try {
-            $order = Order::with(['user', 'driver', 'rating'])->findOrFail($orderId);
+            $order = Order::with(['customer', 'driver', 'ratings'])->findOrFail($orderId);
 
             return [
                 'success' => true,
@@ -293,7 +349,7 @@ class OrderService
     {
         try {
             $query = Order::with(['driver'])
-                ->where('user_id', $userId)
+                ->where('customer_id', $userId)
                 ->orderBy('created_at', 'desc');
 
             if ($status) {
@@ -323,7 +379,7 @@ class OrderService
     public function getDriverOrderHistory($driverId, $limit = 20, $status = null)
     {
         try {
-            $query = Order::with(['user'])
+            $query = Order::with(['customer'])
                 ->where('driver_id', $driverId)
                 ->orderBy('created_at', 'desc');
 
@@ -365,12 +421,17 @@ class OrderService
      */
     protected function notifyAvailableDrivers($order)
     {
-        $driversResult = $this->findAvailableDrivers($order);
-        
-        if ($driversResult['success'] && $driversResult['count'] > 0) {
-            foreach ($driversResult['data'] as $driver) {
-                $this->notificationService->sendOrderNotification($driver, $order, 'new_order');
+        try {
+            $driversResult = $this->findAvailableDrivers($order);
+            
+            if ($driversResult['success'] && $driversResult['count'] > 0) {
+                foreach ($driversResult['data'] as $driver) {
+                    $this->notificationService->sendOrderNotification($driver, $order, 'new_order');
+                }
             }
+        } catch (\Exception $e) {
+            Log::error('Failed to notify drivers: ' . $e->getMessage());
+            // Don't throw exception as order creation was successful
         }
     }
 
@@ -379,24 +440,74 @@ class OrderService
      */
     protected function sendStatusNotification($order, $status)
     {
-        // Notify user
-        $this->notificationService->sendOrderStatusNotification($order->user, $order, $status);
+        try {
+            // Notify customer
+            $this->notificationService->sendOrderStatusNotification($order->customer, $order, $status);
 
-        // Notify driver if applicable
-        if ($order->driver) {
-            $this->notificationService->sendOrderStatusNotification($order->driver, $order, $status);
+            // Notify driver if applicable
+            if ($order->driver) {
+                $this->notificationService->sendOrderStatusNotification($order->driver->user, $order, $status);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to send status notification: ' . $e->getMessage());
+            // Don't throw exception as the main operation was successful
         }
     }
 
     /**
-     * Send cancellation notification
+     * Send cancellation notification - IMPROVED VERSION
      */
     protected function sendCancellationNotification($order)
     {
-        $this->notificationService->sendCancellationNotification($order->user, $order);
-        
-        if ($order->driver) {
-            $this->notificationService->sendCancellationNotification($order->driver, $order);
+        try {
+            // Notify customer
+            if ($order->customer) {
+                $this->notificationService->sendCancellationNotification($order->customer, $order);
+            }
+            
+            // Notify driver if assigned
+            if ($order->driver_id && $order->driver && $order->driver->user) {
+                $this->notificationService->sendCancellationNotification($order->driver->user, $order);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to send cancellation notification: ' . $e->getMessage(), [
+                'order_id' => $order->id
+            ]);
+            // Don't throw exception here as the main cancellation was successful
+        }
+    }
+
+    /**
+     * Rate order
+     */
+    public function rateOrder($order, $rating, $comment, $ratedBy)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Create rating record
+            $order->ratings()->create([
+                'rating' => $rating,
+                'comment' => $comment,
+                'rated_by' => $ratedBy,
+                'created_at' => now()
+            ]);
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => 'Rating submitted successfully'
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Rating submission error: ' . $e->getMessage());
+            
+            return [
+                'success' => false,
+                'error' => 'Failed to submit rating'
+            ];
         }
     }
 }
