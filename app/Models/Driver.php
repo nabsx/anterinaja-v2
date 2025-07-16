@@ -252,4 +252,10 @@ class Driver extends Model
         
         return count(array_intersect($requiredTypes, $uploadedTypes)) === count($requiredTypes);
     }
+    
+    public function vehicleType()
+    {
+        return $this->belongsTo(VehicleType::class, 'vehicle_type', 'name');
+        
+    }
 }
