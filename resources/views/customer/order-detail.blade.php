@@ -165,6 +165,35 @@
                                 </div>
                             </div>
                         </div>
+                    @elseif($order->status === 'cancelled')
+                        <div class="bg-red-50 rounded-lg p-4">
+                            <h3 class="text-lg font-semibold mb-3 text-gray-800">
+                                <i class="fas fa-times-circle mr-2 text-red-500"></i>Pesanan Dibatalkan
+                            </h3>
+                            <div class="text-center py-4">
+                                <i class="fas fa-ban text-3xl text-red-500 mb-3"></i>
+                                <p class="text-gray-700 font-medium">Pesanan ini telah dibatalkan</p>
+                                @if($order->cancellation_reason)
+                                    <p class="text-sm text-red-600 mt-2">{{ $order->cancellation_reason }}</p>
+                                @endif
+                                @if($order->cancelled_at)
+                                    <p class="text-xs text-gray-500 mt-1">{{ $order->cancelled_at->format('d M Y, H:i') }}</p>
+                                @endif
+                            </div>
+                        </div>
+                    @elseif($order->status === 'completed')
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <h3 class="text-lg font-semibold mb-3 text-gray-800">
+                                <i class="fas fa-check-circle mr-2 text-green-500"></i>Pesanan Selesai
+                            </h3>
+                            <div class="text-center py-4">
+                                <i class="fas fa-flag-checkered text-3xl text-green-500 mb-3"></i>
+                                <p class="text-gray-700 font-medium">Perjalanan telah selesai</p>
+                                @if($order->completed_at)
+                                    <p class="text-xs text-gray-500 mt-1">{{ $order->completed_at->format('d M Y, H:i') }}</p>
+                                @endif
+                            </div>
+                        </div>
                     @else
                         <div class="bg-yellow-50 rounded-lg p-4">
                             <h3 class="text-lg font-semibold mb-3 text-gray-800">
@@ -263,6 +292,9 @@
                         <div class="flex-1">
                             <p class="font-medium text-gray-900">Pesanan Dibatalkan</p>
                             <p class="text-sm text-gray-600">{{ $order->cancelled_at->format('d M Y, H:i') }}</p>
+                            @if($order->cancellation_reason)
+                                <p class="text-sm text-red-600">Alasan: {{ $order->cancellation_reason }}</p>
+                            @endif
                         </div>
                     </div>
                 @endif
@@ -277,7 +309,7 @@
                     <i class="fas fa-arrow-left mr-2"></i>Kembali ke Daftar Pesanan
                 </a>
                 
-                @if($order->status === 'pending')
+                @if($order->canBeCancelled())
                     <form method="POST" action="{{ route('customer.orders.cancel', $order->id) }}" class="inline">
                         @csrf
                         @method('PATCH')
@@ -289,7 +321,7 @@
                     </form>
                 @endif
 
-                @if($order->status === 'completed' && !$order->rating)
+                @if($order->canBeRated())
                     <a href="{{ route('customer.orders.rate', $order->id) }}" 
                        class="bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center">
                         <i class="fas fa-star mr-2"></i>Beri Rating
