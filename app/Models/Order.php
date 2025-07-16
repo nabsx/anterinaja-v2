@@ -14,14 +14,14 @@ class Order extends Model
         'order_code',
         'customer_id',
         'driver_id',
-        'order_type',
+        'order_type', // Make sure this is in fillable
         'pickup_address',
         'pickup_latitude',
         'pickup_longitude',
         'destination_address',
         'destination_latitude',
         'destination_longitude',
-        'vehicle_type',
+        'vehicle_type', // Make sure this is in fillable
         'distance_km',
         'duration_minutes',
         'fare_amount',
@@ -178,6 +178,29 @@ class Order extends Model
     public function getFormattedDurationAttribute()
     {
         return $this->duration_minutes . ' menit';
+    }
+
+    // Add these accessor methods to the Order model
+    public function getVehicleTypeDisplayAttribute()
+    {
+        $types = [
+            'motorcycle' => 'Motor',
+            'car' => 'Mobil',
+            'van' => 'Van',
+            'truck' => 'Truk',
+        ];
+
+        return $types[$this->vehicle_type] ?? $this->vehicle_type;
+    }
+
+    public function getOrderTypeDisplayAttribute()
+    {
+        $types = [
+            'ride' => 'Perjalanan',
+            'delivery' => 'Pengiriman',
+        ];
+
+        return $types[$this->order_type] ?? $this->order_type;
     }
 
     // Methods

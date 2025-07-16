@@ -182,7 +182,7 @@ class CustomerDashboardController extends Controller
             'destination_address' => 'required|string',
             'destination_latitude' => 'required|numeric|between:-90,90',
             'destination_longitude' => 'required|numeric|between:-180,180',
-            'service_type' => 'required|in:motorcycle,car,van,truck',
+            'service_type' => 'required|in:motorcycle,car,van,truck', // This maps to vehicle_type
             'notes' => 'nullable|string|max:255',
         ]);
         
@@ -195,7 +195,8 @@ class CustomerDashboardController extends Controller
                 'destination_address' => $request->destination_address,
                 'destination_latitude' => $request->destination_latitude,
                 'destination_longitude' => $request->destination_longitude,
-                'vehicle_type' => $request->service_type,
+                'order_type' => 'ride', // Explicitly set as ride service
+                'vehicle_type' => $request->service_type, // Map form field to vehicle_type
                 'notes' => $request->notes,
             ]);
 

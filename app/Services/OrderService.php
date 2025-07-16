@@ -66,6 +66,7 @@ class OrderService
             $order = Order::create([
                 'order_code' => $this->generateOrderNumber(),
                 'customer_id' => $userId,
+                'order_type' => $orderData['order_type'] ?? 'ride', // Add this line
                 'pickup_address' => $orderData['pickup_address'],
                 'pickup_latitude' => $orderData['pickup_latitude'],
                 'pickup_longitude' => $orderData['pickup_longitude'],
@@ -75,10 +76,10 @@ class OrderService
                 'vehicle_type' => $orderData['vehicle_type'] ?? 'car',
                 'distance_km' => $routeData['distance_km'],
                 'duration_minutes' => $routeData['duration_minutes'],
-                'fare_amount' => $customerFare, // Use the calculated customer fare
+                'fare_amount' => $customerFare,
                 'driver_earning' => $driverEarning,
                 'platform_commission' => $platformCommission,
-                'fare_breakdown' => json_encode($fareData['data']), // Store complete breakdown
+                'fare_breakdown' => json_encode($fareData['data']),
                 'status' => 'pending',
                 'notes' => $orderData['notes'] ?? null,
                 'scheduled_at' => $orderData['scheduled_at'] ?? null,
