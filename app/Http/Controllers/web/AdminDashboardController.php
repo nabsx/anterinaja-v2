@@ -201,7 +201,7 @@ class AdminDashboardController extends Controller
             $search = $request->get('search');
             $query->where(function($q) use ($search) {
                 $q->where('pickup_address', 'like', "%{$search}%")
-                  ->orWhere('delivery_address', 'like', "%{$search}%")
+                  ->orWhere('destination_address', 'like', "%{$search}%")
                   ->orWhereHas('customer', function($customerQ) use ($search) {
                       $customerQ->where('name', 'like', "%{$search}%");
                   });
@@ -227,43 +227,44 @@ class AdminDashboardController extends Controller
 
     public function orderDetail(Order $order)
     {
-        $order->load(['customer', 'driver', 'tracking', 'rating']);
+        // Fixed: Changed 'rating' to 'ratings' to match the relationship name in the Order model
+        $order->load(['customer', 'driver', 'tracking', 'ratings']);
         return view('admin.orders.show', compact('order'));
     }
 
     public function finances()
-{
-    $stats = [
-        'total_revenue' => Order::where('status', 'completed')->sum('actual_fare'),
-        'total_commission' => Order::where('status', 'completed')->sum('commission'),
-        'driver_earnings' => Order::where('status', 'completed')->sum('driver_earning'),
-        'pending_payouts' => Driver::sum('balance'),
-        'today_revenue' => Order::where('status', 'completed')
-            ->whereDate('created_at', Carbon::today())
-            ->sum('actual_fare'),
-        'this_month_revenue' => Order::where('status', 'completed')
-            ->whereMonth('created_at', Carbon::now()->month)
-            ->sum('actual_fare'),
-    ];
+    {
+        $stats = [
+            'total_revenue' => Order::where('status', 'completed')->sum('fare_amount'),
+            'total_commission' => Order::where('status', 'completed')->sum('platform_commission'),
+            'driver_earnings' => Order::where('status', 'completed')->sum('driver_earning'),
+            'pending_payouts' => Driver::sum('balance'),
+            'today_revenue' => Order::where('status', 'completed')
+                ->whereDate('created_at', Carbon::today())
+                ->sum('fare_amount'),
+            'this_month_revenue' => Order::where('status', 'completed')
+                ->whereMonth('created_at', Carbon::now()->month)
+                ->sum('fare_amount'),
+        ];
 
-    // DIPERBAIKI: Ambil top drivers berdasarkan total penghasilan dari orders
-    $top_drivers = Driver::with('user')
-        ->withSum(['orders' => function ($query) {
-            $query->where('status', 'completed');
-        }], 'driver_earning')
-        ->having('orders_sum_driver_earning', '>', 0)
-        ->orderBy('orders_sum_driver_earning', 'desc')
-        ->take(10)
-        ->get();
+        // Fixed: Get top drivers based on total earnings from completed orders
+        $top_drivers = Driver::with('user')
+            ->withSum(['orders' => function ($query) {
+                $query->where('status', 'completed');
+            }], 'driver_earning')
+            ->having('orders_sum_driver_earning', '>', 0)
+            ->orderBy('orders_sum_driver_earning', 'desc')
+            ->take(10)
+            ->get();
 
-    $recent_transactions = Order::with(['customer', 'driver'])
-        ->where('status', 'completed')
-        ->latest()
-        ->take(15)
-        ->get();
+        $recent_transactions = Order::with(['customer', 'driver'])
+            ->where('status', 'completed')
+            ->latest()
+            ->take(15)
+            ->get();
 
-    return view('admin.finances.index', compact('stats', 'top_drivers', 'recent_transactions'));
-}
+        return view('admin.finances.index', compact('stats', 'top_drivers', 'recent_transactions'));
+    }
 
     public function vehicleTypes()
     {
@@ -335,10 +336,10 @@ class AdminDashboardController extends Controller
         $financial_stats = [
             'revenue' => Order::where('status', 'completed')
                 ->whereBetween('created_at', [$date_range['start'], $date_range['end']])
-                ->sum('actual_fare'),
+                ->sum('fare_amount'),
             'commission' => Order::where('status', 'completed')
                 ->whereBetween('created_at', [$date_range['start'], $date_range['end']])
-                ->sum('commission'),
+                ->sum('platform_commission'),
         ];
 
         $driver_stats = [
