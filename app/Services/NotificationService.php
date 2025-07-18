@@ -178,10 +178,36 @@ class NotificationService
     /**
      * Send notification to driver
      */
-    protected function sendDriverNotification($driver, $message)
+    public function sendDriverNotification($driver, $title, $message = null)
     {
-        // Implement driver notification logic
-        Log::info("Driver notification sent to {$driver->id}: {$message}");
+        // If message is not provided, use title as message (backward compatibility)
+        if ($message === null) {
+            $message = $title;
+            $title = 'Notification';
+        }
+
+        // Handle case where $driver is an ID
+        if (is_numeric($driver)) {
+            $driver = Driver::find($driver);
+        }
+
+        // Handle case where $driver is a user_id (from driver->user_id)
+        if ($driver instanceof User) {
+            $driver = $driver->driver; // Assuming you have a relationship
+        }
+
+        if (!$driver) {
+            Log::error("Driver not found for notification");
+            return false;
+        }
+
+        Log::info("Driver notification sent to {$driver->id}: {$title} - {$message}");
+        
+        // Add your actual notification logic here (FCM, email, SMS, etc.)
+        // Example:
+        // $this->sendPushNotification($driver->fcm_token, $title, $message);
+        
+        return true;
     }
 
     /**

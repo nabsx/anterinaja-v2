@@ -161,8 +161,9 @@ class AdminDashboardController extends Controller
     {
         $driver->update(['is_verified' => 1]);
         
+        // Pass the driver object instead of user_id
         $this->notificationService->sendDriverNotification(
-            $driver->user_id,
+            $driver, // Changed from $driver->user_id to $driver
             'Driver Application Approved',
             'Congratulations! Your driver application has been approved. You can now start accepting rides.'
         );
@@ -177,10 +178,12 @@ class AdminDashboardController extends Controller
         ]);
 
         $driver->update([
-            'status' => 'rejected',
-            'rejection_reason' => $request->rejection_reason
+            'status' => 'rejected', // Only allowed: 'available', 'busy', 'offline'
+            'is_verified' => false, // Mark as unverified
+            'rejection_reason' => $request->rejection_reason,
         ]);
 
+        // Send notification
         $this->notificationService->sendDriverNotification(
             $driver->user_id,
             'Driver Application Rejected',

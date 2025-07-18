@@ -88,8 +88,8 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::get('/drivers/{driver}', [AdminDashboardController::class, 'driverDetail'])->name('admin.drivers.show');
         Route::put('/drivers/{driver}', [AdminDashboardController::class, 'updateDriver'])->name('admin.drivers.update');
         Route::put('/drivers/{driver}/status', [AdminDashboardController::class, 'toggleDriverStatus'])->name('admin.drivers.toggle-status');
-        Route::put('/drivers/{driver}/approve', [AdminDashboardController::class, 'approveDriver'])->name('admin.drivers.approve');
-        Route::put('/drivers/{driver}/reject', [AdminDashboardController::class, 'rejectDriver'])->name('admin.drivers.reject');
+        Route::patch('/drivers/{driver}/approve', [AdminDashboardController::class, 'approveDriver'])->name('admin.drivers.approve');
+        Route::patch('/drivers/{driver}/reject', [AdminDashboardController::class, 'rejectDriver'])->name('admin.drivers.reject');
         Route::get('/drivers/{driver}/documents', [AdminDashboardController::class, 'driverDocuments'])->name('admin.drivers.documents');
         Route::put('/drivers/{driver}/documents/{document}/approve', [AdminDashboardController::class, 'approveDocument'])->name('admin.drivers.documents.approve');
         Route::put('/drivers/{driver}/documents/{document}/reject', [AdminDashboardController::class, 'rejectDocument'])->name('admin.drivers.documents.reject');

@@ -3,259 +3,156 @@
 @section('title', 'Keuangan')
 
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Dashboard Keuangan</h3>
+<div class="p-4 sm:p-6 lg:p-8">
+    <h2 class="text-2xl font-semibold mb-6">Dashboard Keuangan</h2>
+
+    <!-- Statistik Keuangan -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div class="bg-blue-600 text-white rounded-xl p-4 shadow">
+            <h5 class="text-sm">Total Pendapatan</h5>
+            <h3 class="text-xl font-bold">Rp {{ number_format($stats['total_revenue'], 0, ',', '.') }}</h3>
+        </div>
+        <div class="bg-green-600 text-white rounded-xl p-4 shadow">
+            <h5 class="text-sm">Total Komisi</h5>
+            <h3 class="text-xl font-bold">Rp {{ number_format($stats['total_commission'], 0, ',', '.') }}</h3>
+        </div>
+        <div class="bg-cyan-600 text-white rounded-xl p-4 shadow">
+            <h5 class="text-sm">Penghasilan Driver</h5>
+            <h3 class="text-xl font-bold">Rp {{ number_format($stats['driver_earnings'], 0, ',', '.') }}</h3>
+        </div>
+        <div class="bg-yellow-500 text-white rounded-xl p-4 shadow">
+            <h5 class="text-sm">Pending Payouts</h5>
+            <h3 class="text-xl font-bold">Rp {{ number_format($stats['pending_payouts'], 0, ',', '.') }}</h3>
+        </div>
+        <div class="bg-gray-600 text-white rounded-xl p-4 shadow">
+            <h5 class="text-sm">Pendapatan Hari Ini</h5>
+            <h3 class="text-xl font-bold">Rp {{ number_format($stats['today_revenue'], 0, ',', '.') }}</h3>
+        </div>
+        <div class="bg-black text-white rounded-xl p-4 shadow">
+            <h5 class="text-sm">Pendapatan Bulan Ini</h5>
+            <h3 class="text-xl font-bold">Rp {{ number_format($stats['this_month_revenue'], 0, ',', '.') }}</h3>
+        </div>
+    </div>
+
+    <!-- Top Drivers & Transaksi Terbaru -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Top Driver -->
+        <div class="bg-white rounded-xl shadow p-4">
+            <h4 class="text-lg font-semibold mb-4">Top Driver (Penghasilan Tertinggi)</h4>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-100 text-left">
+                            <th class="py-2 px-3">No</th>
+                            <th class="py-2 px-3">Nama Driver</th>
+                            <th class="py-2 px-3">Total Penghasilan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($top_drivers as $index => $driver)
+                        <tr class="border-t">
+                            <td class="py-2 px-3">{{ $index + 1 }}</td>
+                            <td class="py-2 px-3">
+                                <div class="font-semibold">{{ $driver->user->name }}</div>
+                                <div class="text-gray-500 text-xs">{{ $driver->user->email }}</div>
+                            </td>
+                            <td class="py-2 px-3">
+                                <span class="inline-block bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded">
+                                    Rp {{ number_format($driver->orders_sum_driver_earning ?? $driver->total_earnings ?? 0, 0, ',', '.') }}
+                                </span>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="3" class="text-center py-4">Tidak ada data driver</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Transaksi Terbaru -->
+        <div class="bg-white rounded-xl shadow p-4">
+            <h4 class="text-lg font-semibold mb-4">Transaksi Terbaru</h4>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-100 text-left">
+                            <th class="py-2 px-3">Kode Order</th>
+                            <th class="py-2 px-3">Customer</th>
+                            <th class="py-2 px-3">Driver</th>
+                            <th class="py-2 px-3">Total</th>
+                            <th class="py-2 px-3">Tanggal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($recent_transactions as $transaction)
+                        <tr class="border-t">
+                            <td class="py-2 px-3 font-semibold">{{ $transaction->order_code }}</td>
+                            <td class="py-2 px-3">{{ $transaction->customer->name ?? 'N/A' }}</td>
+                            <td class="py-2 px-3">{{ $transaction->driver->user->name ?? 'N/A' }}</td>
+                            <td class="py-2 px-3">
+                                <span class="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
+                                    Rp {{ number_format($transaction->actual_fare, 0, ',', '.') }}
+                                </span>
+                            </td>
+                            <td class="py-2 px-3">
+                                {{ $transaction->completed_at ? $transaction->completed_at->format('d/m/Y H:i') : 'N/A' }}
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5" class="text-center py-4">Tidak ada transaksi terbaru</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ringkasan Keuangan -->
+    <div class="mt-10">
+        <h4 class="text-lg font-semibold mb-4">Ringkasan Keuangan</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="flex items-center bg-white rounded-xl shadow p-4">
+                <div class="w-12 h-12 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full mr-4">
+                    <i class="fas fa-money-bill-wave"></i>
                 </div>
-                <div class="card-body">
-                    
-                    <!-- Statistik Keuangan -->
-                    <div class="row mb-4">
-                        <div class="col-md-2">
-                            <div class="card bg-primary text-white">
-                                <div class="card-body">
-                                    <h5>Total Pendapatan</h5>
-                                    <h3>Rp {{ number_format($stats['total_revenue'], 0, ',', '.') }}</h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-success text-white">
-                                <div class="card-body">
-                                    <h5>Total Komisi</h5>
-                                    <h3>Rp {{ number_format($stats['total_commission'], 0, ',', '.') }}</h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-info text-white">
-                                <div class="card-body">
-                                    <h5>Penghasilan Driver</h5>
-                                    <h3>Rp {{ number_format($stats['driver_earnings'], 0, ',', '.') }}</h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-warning text-white">
-                                <div class="card-body">
-                                    <h5>Pending Payouts</h5>
-                                    <h3>Rp {{ number_format($stats['pending_payouts'], 0, ',', '.') }}</h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-secondary text-white">
-                                <div class="card-body">
-                                    <h5>Pendapatan Hari Ini</h5>
-                                    <h3>Rp {{ number_format($stats['today_revenue'], 0, ',', '.') }}</h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="card bg-dark text-white">
-                                <div class="card-body">
-                                    <h5>Pendapatan Bulan Ini</h5>
-                                    <h3>Rp {{ number_format($stats['this_month_revenue'], 0, ',', '.') }}</h3>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Top Drivers -->
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h4>Top Driver (Penghasilan Tertinggi)</h4>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th>No</th>
-                                                    <th>Nama Driver</th>
-                                                    <th>Total Penghasilan</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @forelse($top_drivers as $index => $driver)
-                                                <tr>
-                                                    <td>{{ $index + 1 }}</td>
-                                                    <td>
-                                                        <strong>{{ $driver->user->name }}</strong><br>
-                                                        <small class="text-muted">{{ $driver->user->email }}</small>
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge badge-success">
-                                                            Rp {{ number_format($driver->orders_sum_driver_earning ?? $driver->total_earnings ?? 0, 0, ',', '.') }}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                                @empty
-                                                <tr>
-                                                    <td colspan="3" class="text-center">Tidak ada data driver</td>
-                                                </tr>
-                                                @endforelse
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Recent Transactions -->
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h4>Transaksi Terbaru</h4>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th>Kode Order</th>
-                                                    <th>Customer</th>
-                                                    <th>Driver</th>
-                                                    <th>Total</th>
-                                                    <th>Tanggal</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @forelse($recent_transactions as $transaction)
-                                                <tr>
-                                                    <td>
-                                                        <strong>{{ $transaction->order_code }}</strong>
-                                                    </td>
-                                                    <td>
-                                                        {{ $transaction->customer->name ?? 'N/A' }}
-                                                    </td>
-                                                    <td>
-                                                        {{ $transaction->driver->user->name ?? 'N/A' }}
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge badge-primary">
-                                                            Rp {{ number_format($transaction->actual_fare, 0, ',', '.') }}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        {{ $transaction->completed_at ? $transaction->completed_at->format('d/m/Y H:i') : 'N/A' }}
-                                                    </td>
-                                                </tr>
-                                                @empty
-                                                <tr>
-                                                    <td colspan="5" class="text-center">Tidak ada transaksi terbaru</td>
-                                                </tr>
-                                                @endforelse
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Detail Breakdown -->
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h4>Ringkasan Keuangan</h4>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-3">
-                                            <div class="info-box">
-                                                <span class="info-box-icon bg-primary"><i class="fas fa-money-bill-wave"></i></span>
-                                                <div class="info-box-content">
-                                                    <span class="info-box-text">Total Pendapatan</span>
-                                                    <span class="info-box-number">Rp {{ number_format($stats['total_revenue'], 0, ',', '.') }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="info-box">
-                                                <span class="info-box-icon bg-success"><i class="fas fa-percentage"></i></span>
-                                                <div class="info-box-content">
-                                                    <span class="info-box-text">Komisi Platform</span>
-                                                    <span class="info-box-number">Rp {{ number_format($stats['total_commission'], 0, ',', '.') }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="info-box">
-                                                <span class="info-box-icon bg-info"><i class="fas fa-car"></i></span>
-                                                <div class="info-box-content">
-                                                    <span class="info-box-text">Penghasilan Driver</span>
-                                                    <span class="info-box-number">Rp {{ number_format($stats['driver_earnings'], 0, ',', '.') }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <div class="info-box">
-                                                <span class="info-box-icon bg-warning"><i class="fas fa-clock"></i></span>
-                                                <div class="info-box-content">
-                                                    <span class="info-box-text">Pending Payouts</span>
-                                                    <span class="info-box-number">Rp {{ number_format($stats['pending_payouts'], 0, ',', '.') }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
+                <div>
+                    <div class="text-sm text-gray-600">Total Pendapatan</div>
+                    <div class="text-base font-bold">Rp {{ number_format($stats['total_revenue'], 0, ',', '.') }}</div>
+                </div>
+            </div>
+            <div class="flex items-center bg-white rounded-xl shadow p-4">
+                <div class="w-12 h-12 flex items-center justify-center bg-green-100 text-green-600 rounded-full mr-4">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <div>
+                    <div class="text-sm text-gray-600">Komisi Platform</div>
+                    <div class="text-base font-bold">Rp {{ number_format($stats['total_commission'], 0, ',', '.') }}</div>
+                </div>
+            </div>
+            <div class="flex items-center bg-white rounded-xl shadow p-4">
+                <div class="w-12 h-12 flex items-center justify-center bg-cyan-100 text-cyan-600 rounded-full mr-4">
+                    <i class="fas fa-car"></i>
+                </div>
+                <div>
+                    <div class="text-sm text-gray-600">Penghasilan Driver</div>
+                    <div class="text-base font-bold">Rp {{ number_format($stats['driver_earnings'], 0, ',', '.') }}</div>
+                </div>
+            </div>
+            <div class="flex items-center bg-white rounded-xl shadow p-4">
+                <div class="w-12 h-12 flex items-center justify-center bg-yellow-100 text-yellow-600 rounded-full mr-4">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div>
+                    <div class="text-sm text-gray-600">Pending Payouts</div>
+                    <div class="text-base font-bold">Rp {{ number_format($stats['pending_payouts'], 0, ',', '.') }}</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-@endsection
-
-@section('styles')
-<style>
-    .card {
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        border: none;
-        border-radius: 8px;
-    }
-    .card-header {
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #dee2e6;
-    }
-    .info-box {
-        display: flex;
-        align-items: center;
-        padding: 10px;
-        background: #fff;
-        border-radius: 5px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    .info-box-icon {
-        width: 60px;
-        height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        margin-right: 15px;
-    }
-    .info-box-content {
-        flex: 1;
-    }
-    .info-box-text {
-        font-weight: 500;
-        color: #666;
-    }
-    .info-box-number {
-        font-size: 18px;
-        font-weight: bold;
-        color: #333;
-    }
-</style>
 @endsection

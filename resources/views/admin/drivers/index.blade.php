@@ -51,19 +51,19 @@
                 </div>
                 <div class="ml-4">
                     <p class="text-sm font-medium text-gray-600">Pending</p>
-                    <p class="text-2xl font-bold text-gray-900">{{ $drivers->where('is_verified', 0)->count() }}</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $drivers->where('is_verified', 0)->where('status', '!=', 'rejected')->count() }}</p>
                 </div>
             </div>
         </div>
         
         <div class="bg-white rounded-lg shadow p-6">
             <div class="flex items-center">
-                <div class="p-3 rounded-full bg-purple-100 text-purple-600">
-                    <i class="fas fa-motorcycle text-xl"></i>
+                <div class="p-3 rounded-full bg-red-100 text-red-600">
+                    <i class="fas fa-times-circle text-xl"></i>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600">Online</p>
-                    <p class="text-2xl font-bold text-gray-900">{{ $drivers->where('is_online', 1)->count() }}</p>
+                    <p class="text-sm font-medium text-gray-600">Rejected</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $drivers->where('status', 'rejected')->count() }}</p>
                 </div>
             </div>
         </div>
@@ -97,6 +97,7 @@
                         <option value="">All</option>
                         <option value="1" {{ request('is_verified') === '1' ? 'selected' : '' }}>Verified</option>
                         <option value="0" {{ request('is_verified') === '0' ? 'selected' : '' }}>Pending</option>
+                        <option value="rejected" {{ request('is_verified') === 'rejected' ? 'selected' : '' }}>Rejected</option>
                     </select>
                 </div>
                 
@@ -178,6 +179,10 @@
                                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
                                         Suspended
                                     </span>
+                                @elseif($driver->status === 'rejected')
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                        Rejected
+                                    </span>
                                 @else
                                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
                                         {{ ucfirst($driver->status) }}
@@ -202,10 +207,17 @@
                                     Verified
                                 </span>
                             @else
-                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                    <i class="fas fa-clock mr-1"></i>
-                                    Pending
-                                </span>
+                                @if($driver->status === 'rejected')
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                        <i class="fas fa-times mr-1"></i>
+                                        Rejected
+                                    </span>
+                                @else
+                                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        Pending
+                                    </span>
+                                @endif
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
