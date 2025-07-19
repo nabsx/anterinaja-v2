@@ -128,7 +128,7 @@
                                     @else bg-blue-100 text-blue-800 @endif">
                                     {{ $order->status_label }}
                                 </span>
-                                <p class="text-sm font-medium text-gray-900 mt-1">Rp {{ number_format($order->estimated_fare) }}</p>
+                                <p class="text-sm font-medium text-gray-900 mt-1">Rp {{ number_format($order->fare_amount) }}</p>
                             </div>
                         </div>
                         @empty
@@ -167,7 +167,7 @@
                             <div class="flex space-x-2">
                                 <form action="{{ route('admin.drivers.approve', $driver) }}" method="POST" class="inline">
                                     @csrf
-                                    @method('PUT')
+                                    @method('PATCH')
                                     <button type="submit" class="text-green-600 hover:text-green-700">
                                         <i class="fas fa-check text-sm"></i>
                                     </button>
