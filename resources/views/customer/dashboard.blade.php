@@ -143,7 +143,7 @@
                                                 {{ ucfirst($order->status) }}
                                             </span>
                                             <span class="ml-2 text-sm font-medium text-gray-900">
-                                                Rp {{ number_format($order->total_fare, 0, ',', '.') }}
+                                                Rp {{ number_format($order->fare_amount, 0, ',', '.') }}
                                             </span>
                                         </div>
                                     </div>
