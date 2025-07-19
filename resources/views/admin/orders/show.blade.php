@@ -475,13 +475,13 @@
                         Cancel Order
                     </button>
                     @elseif($order->status === 'accepted')
-                    <button onclick="updateOrderStatus('on_the_way')" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <button onclick="updateOrderStatus('in_progress')" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
                         </svg>
                         Mark as On The Way
                     </button>
-                    @elseif($order->status === 'on_the_way')
+                    @elseif($order->status === 'in_progress')
                     <button onclick="updateOrderStatus('completed')" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -490,9 +490,11 @@
                     </button>
                     @endif
                     
-                    <button onclick="printOrder()" class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <button onclick="printOrder({{ $order->id }})"
+                            class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                         </svg>
                         Print Order
                     </button>
@@ -508,65 +510,139 @@
     </div>
 </div>
 
+
 <!-- JavaScript for Actions -->
 <script>
+// Get CSRF token from meta tag
+function getCSRFToken() {
+    const token = document.querySelector('meta[name="csrf-token"]');
+    if (!token) {
+        console.error('CSRF token not found');
+        return null;
+    }
+    return token.getAttribute('content');
+}
+
 function updateOrderStatus(status) {
-    if (confirm('Are you sure you want to update the order status to ' + status + '?')) {
-        fetch(`/admin/orders/{{ $order->id }}/status`, {
+    if (confirm('Are you sure you want to update the order status to ' + status.replace('_', ' ') + '?')) {
+        const csrfToken = getCSRFToken();
+        if (!csrfToken) {
+            alert('Security token not found. Please refresh the page.');
+            return;
+        }
+
+        // Show loading state
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Updating...';
+        button.disabled = true;
+
+        fetch('/admin/orders/{{ $order->id }}/status', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
             },
             body: JSON.stringify({ status: status })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => Promise.reject(err));
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                location.reload();
+                // Show success message
+                const successDiv = document.createElement('div');
+                successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+                successDiv.innerHTML = '<div class="flex items-center space-x-2"><i class="fas fa-check-circle"></i><span>Order status updated successfully!</span></div>';
+                document.body.appendChild(successDiv);
+                
+                // Reload page after short delay
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
             } else {
-                alert('Error updating order status');
+                throw new Error(data.message || 'Unknown error occurred');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error updating order status');
+            alert('Error updating order status: ' + (error.message || 'Please try again.'));
+            button.innerHTML = originalText;
+            button.disabled = false;
         });
     }
 }
 
 function cancelOrder() {
     const reason = prompt('Please enter cancellation reason:');
-    if (reason) {
-        fetch(`/admin/orders/{{ $order->id }}/cancel`, {
+    if (reason && reason.trim()) {
+        const csrfToken = getCSRFToken();
+        if (!csrfToken) {
+            alert('Security token not found. Please refresh the page.');
+            return;
+        }
+
+        // Show loading state
+        const button = event.target.closest('button');
+        const originalText = button.innerHTML;
+        button.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Cancelling...';
+        button.disabled = true;
+
+        fetch('/admin/orders/{{ $order->id }}/cancel', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
             },
-            body: JSON.stringify({ reason: reason })
+            body: JSON.stringify({ reason: reason.trim() })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => Promise.reject(err));
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                location.reload();
+                // Show success message
+                const successDiv = document.createElement('div');
+                successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+                successDiv.innerHTML = '<div class="flex items-center space-x-2"><i class="fas fa-check-circle"></i><span>Order cancelled successfully!</span></div>';
+                document.body.appendChild(successDiv);
+                
+                // Reload page after short delay
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
             } else {
-                alert('Error cancelling order');
+                throw new Error(data.message || 'Unknown error occurred');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error cancelling order');
+            alert('Error cancelling order: ' + (error.message || 'Please try again.'));
+            button.innerHTML = originalText;
+            button.disabled = false;
         });
     }
 }
 
-function printOrder() {
-    window.print();
-}
+function printOrder(orderId) {
+    window.open('/admin/orders/' + orderId + '/receipt?auto_print=1', '_blank');
+}   
 
 function exportOrder() {
-    window.location.href = `/admin/orders/{{ $order->id }}/export`;
+    window.location.href = '/admin/orders/{{ $order->id }}/export';
 }
+
+// Debug function to check if everything is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded, CSRF token:', getCSRFToken());
+});
 </script>
 @endsection

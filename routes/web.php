@@ -97,8 +97,11 @@ Route::middleware(['auth', 'web'])->group(function () {
         // Order Management
         Route::get('/orders', [AdminDashboardController::class, 'orders'])->name('admin.orders');
         Route::get('/orders/{order}', [AdminDashboardController::class, 'orderDetail'])->name('admin.orders.show');
+        Route::post('/orders/{order}/status', [AdminDashboardController::class, 'updateOrderStatus'])->name('admin.orders.update-status');
+        Route::post('/orders/{order}/cancel', [AdminDashboardController::class, 'cancelOrder'])->name('admin.orders.cancel');
         Route::put('/orders/{order}/status', [AdminDashboardController::class, 'updateOrderStatus'])->name('admin.orders.status');
         Route::delete('/orders/{order}', [AdminDashboardController::class, 'deleteOrder'])->name('admin.orders.delete');
+        Route::get('/orders/{order}/receipt', [AdminDashboardController::class, 'printOrderReceipt'])->name('admin.orders.receipt');
         
         // Financial Management
         Route::get('/finances', [AdminDashboardController::class, 'finances'])->name('admin.finances');

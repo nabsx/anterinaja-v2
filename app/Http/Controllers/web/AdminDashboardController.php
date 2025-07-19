@@ -232,6 +232,131 @@ class AdminDashboardController extends Controller
         return view('admin.orders.show', compact('order'));
     }
 
+    // Add this method to AdminDashboardController.php
+    public function printOrderReceipt(Order $order)
+    {
+        $order->load(['customer', 'driver']);
+        
+        return view('admin.orders.receipt', compact('order'));
+    }
+
+    public function updateOrderStatus(Request $request, Order $order)
+    {
+        $request->validate([
+            'status' => 'required|in:pending,accepted,on_the_way,driver_arrived,picked_up,in_progress,completed,cancelled'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Update order status with timestamp
+            $updateData = [
+                'status' => $request->status,
+                'updated_at' => now()
+            ];
+
+            // Add timestamp for specific status
+            switch ($request->status) {
+                case 'accepted':
+                    $updateData['accepted_at'] = now();
+                    break;
+                case 'picked_up':
+                    $updateData['picked_up_at'] = now();
+                    break;
+                case 'completed':
+                    $updateData['completed_at'] = now();
+                    break;
+                case 'cancelled':
+                    $updateData['cancelled_at'] = now();
+                    break;
+            }
+
+            $order->update($updateData);
+
+            // Add tracking entry
+            $order->tracking()->create([
+                'status' => $request->status,
+                'notes' => 'Status updated by admin',
+                'created_at' => now()
+            ]);
+
+            // Update driver status if needed
+            if ($order->driver) {
+                if ($request->status === 'completed' || $request->status === 'cancelled') {
+                    $order->driver->update(['status' => 'available']);
+                } elseif ($request->status === 'accepted') {
+                    $order->driver->update(['status' => 'busy']);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Order status updated successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating order status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function cancelOrder(Request $request, Order $order)
+    {
+        $request->validate([
+            'reason' => 'required|string|max:500'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $order->update([
+                'status' => 'cancelled',
+                'cancelled_at' => now(),
+                'cancellation_reason' => $request->reason,
+                'cancelled_by' => 'admin'
+            ]);
+
+            // Add tracking entry
+            $order->tracking()->create([
+                'status' => 'cancelled',
+                'notes' => 'Order cancelled by admin. Reason: ' . $request->reason,
+                'created_at' => now()
+            ]);
+
+            // If driver was assigned, make them available again
+            if ($order->driver) {
+                $order->driver->update(['status' => 'available']);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Order cancelled successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error cancelling order: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function exportOrder(Order $order)
+    {
+        // This is a placeholder - you can implement CSV/PDF export here
+        return redirect()->back()->with('success', 'Export functionality will be implemented');
+    }
+
     public function finances()
     {
         $stats = [
