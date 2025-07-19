@@ -32,7 +32,7 @@ class AdminDashboardController extends Controller
             'active_drivers' => Driver::where('is_online', true)->count(),
             'total_orders' => Order::count(),
             'completed_orders' => Order::where('status', 'completed')->count(),
-            'pending_orders' => Order::whereIn('status', ['pending', 'accepted', 'on_the_way'])->count(),
+            'pending_orders' => Order::whereIn('status', ['pending', 'accepted', 'in_progress'])->count(),
             'total_revenue' => Order::where('status', 'completed')->sum('platform_commission'),
             'today_orders' => Order::whereDate('created_at', Carbon::today())->count(),
             'pending_driver_approvals' => Driver::where('is_verified', 0)->count(),
@@ -86,7 +86,13 @@ class AdminDashboardController extends Controller
 
     public function userDetail(User $user)
     {
-        $user->load(['orders', 'driver']);
+        // Load relationships based on user role
+        if ($user->isDriver()) {
+            $user->load(['driver', 'driver.orders']);
+        } else {
+            $user->load(['orders']);
+        }
+        
         return view('admin.users.show', compact('user'));
     }
 
@@ -243,7 +249,7 @@ class AdminDashboardController extends Controller
     public function updateOrderStatus(Request $request, Order $order)
     {
         $request->validate([
-            'status' => 'required|in:pending,accepted,on_the_way,driver_arrived,picked_up,in_progress,completed,cancelled'
+            'status' => 'required|in:pending,accepted,driver_arrived,picked_up,in_progress,completed,cancelled'
         ]);
 
         try {

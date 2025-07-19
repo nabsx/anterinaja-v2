@@ -25,6 +25,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'phone',
         'role',
         'profile_picture',
+        'is_active',
+        'last_login_at',
         'address',
         'city',
         'is_active',
@@ -75,7 +77,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function orders()
     {
-        return $this->hasMany(Order::class);
+        return $this->hasMany(Order::class, 'customer_id');
     }
 
     public function ratingsGiven()

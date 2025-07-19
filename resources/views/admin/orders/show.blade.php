@@ -50,7 +50,7 @@
             $statusColors = [
                 'pending' => 'bg-yellow-50 border-yellow-200 text-yellow-800',
                 'accepted' => 'bg-blue-50 border-blue-200 text-blue-800',
-                'on_the_way' => 'bg-indigo-50 border-indigo-200 text-indigo-800',
+                'in_progress' => 'bg-indigo-50 border-indigo-200 text-indigo-800',
                 'completed' => 'bg-green-50 border-green-200 text-green-800',
                 'cancelled' => 'bg-red-50 border-red-200 text-red-800'
             ];
