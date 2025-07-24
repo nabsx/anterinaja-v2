@@ -66,20 +66,25 @@ class AdminDashboardController extends Controller
     {
         $query = User::query();
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
+        // Search functionality
+        if ($request->filled('search')) {
+            $search = trim($request->get('search'));
             $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('email', 'LIKE', "%{$search}%")
+                  ->orWhere('phone', 'LIKE', "%{$search}%");
             });
         }
 
-        if ($request->has('role') && $request->get('role') !== '') {
+        // Role filter
+        if ($request->filled('role')) {
             $query->where('role', $request->get('role'));
         }
 
         $users = $query->orderBy('created_at', 'desc')->paginate(20);
+        
+        // Append query parameters to pagination links
+        $users->appends($request->query());
 
         return view('admin.users.index', compact('users'));
     }
@@ -133,26 +138,44 @@ class AdminDashboardController extends Controller
     {
         $query = Driver::with('user');
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
-            $query->whereHas('user', function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
-            })->orWhere('license_number', 'like', "%{$search}%")
-              ->orWhere('vehicle_plate', 'like', "%{$search}%");
+        // Search functionality
+        if ($request->filled('search')) {
+            $search = trim($request->get('search'));
+            $query->where(function($q) use ($search) {
+                // Search in user relationship
+                $q->whereHas('user', function($userQuery) use ($search) {
+                    $userQuery->where('name', 'LIKE', "%{$search}%")
+                             ->orWhere('email', 'LIKE', "%{$search}%")
+                             ->orWhere('phone', 'LIKE', "%{$search}%");
+                })
+                // Search in driver fields
+                ->orWhere('license_number', 'LIKE', "%{$search}%")
+                ->orWhere('vehicle_plate', 'LIKE', "%{$search}%")
+                ->orWhere('vehicle_brand', 'LIKE', "%{$search}%")
+                ->orWhere('vehicle_model', 'LIKE', "%{$search}%");
+            });
         }
 
-        if ($request->has('status') && $request->get('status') !== '') {
+        // Status filter
+        if ($request->filled('status')) {
             $query->where('status', $request->get('status'));
         }
 
-        if ($request->has('vehicle_type') && $request->get('vehicle_type') !== '') {
+        // Verification filter
+        if ($request->filled('is_verified')) {
+            $query->where('is_verified', $request->get('is_verified'));
+        }
+
+        // Vehicle type filter
+        if ($request->filled('vehicle_type')) {
             $query->where('vehicle_type', $request->get('vehicle_type'));
         }
 
         $drivers = $query->orderBy('created_at', 'desc')->paginate(20);
-        $vehicle_types = ['motorcycle', 'car']; 
+        $vehicle_types = ['motorcycle', 'car'];
+        
+        // Append query parameters to pagination links
+        $drivers->appends($request->query());
 
         return view('admin.drivers.index', compact('drivers', 'vehicle_types'));
     }
@@ -184,8 +207,8 @@ class AdminDashboardController extends Controller
         ]);
 
         $driver->update([
-            'status' => 'rejected', // Only allowed: 'available', 'busy', 'offline'
-            'is_verified' => false, // Mark as unverified
+            'status' => 'rejected',
+            'is_verified' => false,
             'rejection_reason' => $request->rejection_reason,
         ]);
 
@@ -203,42 +226,52 @@ class AdminDashboardController extends Controller
     {
         $query = Order::with(['customer', 'driver']);
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
+        // Search functionality
+        if ($request->filled('search')) {
+            $search = trim($request->get('search'));
             $query->where(function($q) use ($search) {
-                $q->where('pickup_address', 'like', "%{$search}%")
-                  ->orWhere('destination_address', 'like', "%{$search}%")
+                $q->where('order_code', 'LIKE', "%{$search}%")
+                  ->orWhere('pickup_address', 'LIKE', "%{$search}%")
+                  ->orWhere('destination_address', 'LIKE', "%{$search}%")
                   ->orWhereHas('customer', function($customerQ) use ($search) {
-                      $customerQ->where('name', 'like', "%{$search}%");
+                      $customerQ->where('name', 'LIKE', "%{$search}%")
+                               ->orWhere('email', 'LIKE', "%{$search}%")
+                               ->orWhere('phone', 'LIKE', "%{$search}%");
+                  })
+                  ->orWhereHas('driver.user', function($driverQ) use ($search) {
+                      $driverQ->where('name', 'LIKE', "%{$search}%");
                   });
             });
         }
 
-        if ($request->has('status') && $request->get('status') !== '') {
+        // Status filter
+        if ($request->filled('status')) {
             $query->where('status', $request->get('status'));
         }
 
-        if ($request->has('date_from') && $request->get('date_from') !== '') {
-            $query->where('created_at', '>=', $request->get('date_from') . ' 00:00:00');
+        // Date range filters
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->get('date_from'));
         }
 
-        if ($request->has('date_to') && $request->get('date_to') !== '') {
-            $query->where('created_at', '<=', $request->get('date_to') . ' 23:59:59');
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->get('date_to'));
         }
 
         $orders = $query->orderBy('created_at', 'desc')->paginate(20);
+        
+        // Append query parameters to pagination links
+        $orders->appends($request->query());
 
         return view('admin.orders.index', compact('orders'));
     }
 
     public function orderDetail(Order $order)
     {
-        // Fixed: Changed 'rating' to 'ratings' to match the relationship name in the Order model
         $order->load(['customer', 'driver', 'tracking', 'ratings']);
         return view('admin.orders.show', compact('order'));
     }
 
-    // Add this method to AdminDashboardController.php
     public function printOrderReceipt(Order $order)
     {
         $order->load(['customer', 'driver']);
@@ -378,7 +411,6 @@ class AdminDashboardController extends Controller
                 ->sum('fare_amount'),
         ];
 
-        // Fixed: Get top drivers based on total earnings from completed orders
         $top_drivers = Driver::with('user')
             ->withSum(['orders' => function ($query) {
                 $query->where('status', 'completed');
