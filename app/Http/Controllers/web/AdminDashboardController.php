@@ -514,6 +514,130 @@ class AdminDashboardController extends Controller
         return view('admin.reports.index', compact('order_stats', 'financial_stats', 'driver_stats', 'date_range'));
     }
 
+    public function orderReports(Request $request)
+    {
+        $date_from = $request->get('date_from', Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $date_to = $request->get('date_to', Carbon::now()->endOfMonth()->format('Y-m-d'));
+
+        $query = Order::with(['customer', 'driver']);
+
+        if ($date_from) {
+            $query->whereDate('created_at', '>=', $date_from);
+        }
+
+        if ($date_to) {
+            $query->whereDate('created_at', '<=', $date_to);
+        }
+
+        $orders = $query->orderBy('created_at', 'desc')->paginate(50);
+
+        $stats = [
+            'total_orders' => $query->count(),
+            'completed_orders' => (clone $query)->where('status', 'completed')->count(),
+            'cancelled_orders' => (clone $query)->where('status', 'cancelled')->count(),
+            'pending_orders' => (clone $query)->whereIn('status', ['pending', 'accepted', 'in_progress'])->count(),
+            'total_revenue' => (clone $query)->where('status', 'completed')->sum('fare_amount'),
+            'total_commission' => (clone $query)->where('status', 'completed')->sum('platform_commission'),
+        ];
+
+        $orders->appends($request->query());
+
+        return view('admin.reports.orders', compact('orders', 'stats', 'date_from', 'date_to'));
+    }
+
+    public function driverReports(Request $request)
+    {
+        $date_from = $request->get('date_from', Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $date_to = $request->get('date_to', Carbon::now()->endOfMonth()->format('Y-m-d'));
+
+        $query = Driver::with(['user', 'orders' => function($q) use ($date_from, $date_to) {
+            $q->where('status', 'completed');
+            if ($date_from) {
+                $q->whereDate('created_at', '>=', $date_from);
+            }
+            if ($date_to) {
+                $q->whereDate('created_at', '<=', $date_to);
+            }
+        }]);
+
+        $drivers = $query->paginate(50);
+
+        $stats = [
+            'total_drivers' => Driver::count(),
+            'active_drivers' => Driver::where('is_online', true)->count(),
+            'verified_drivers' => Driver::where('is_verified', true)->count(),
+            'new_drivers' => Driver::whereBetween('created_at', [$date_from, $date_to])->count(),
+        ];
+
+        $drivers->appends($request->query());
+
+        return view('admin.reports.drivers', compact('drivers', 'stats', 'date_from', 'date_to'));
+    }
+
+    public function customerReports(Request $request)
+    {
+        $date_from = $request->get('date_from', Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $date_to = $request->get('date_to', Carbon::now()->endOfMonth()->format('Y-m-d'));
+
+        $query = User::where('role', 'customer')->with(['orders' => function($q) use ($date_from, $date_to) {
+            if ($date_from) {
+                $q->whereDate('created_at', '>=', $date_from);
+            }
+            if ($date_to) {
+                $q->whereDate('created_at', '<=', $date_to);
+            }
+        }]);
+
+        $customers = $query->paginate(50);
+
+        $stats = [
+            'total_customers' => User::where('role', 'customer')->count(),
+            'active_customers' => User::where('role', 'customer')->where('is_active', true)->count(),
+            'new_customers' => User::where('role', 'customer')->whereBetween('created_at', [$date_from, $date_to])->count(),
+            'customers_with_orders' => User::where('role', 'customer')->whereHas('orders')->count(),
+        ];
+
+        $customers->appends($request->query());
+
+        return view('admin.reports.customers', compact('customers', 'stats', 'date_from', 'date_to'));
+    }
+
+    public function financialReports(Request $request)
+    {
+        $date_from = $request->get('date_from', Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $date_to = $request->get('date_to', Carbon::now()->endOfMonth()->format('Y-m-d'));
+
+        $orders = Order::where('status', 'completed')
+            ->whereDate('created_at', '>=', $date_from)
+            ->whereDate('created_at', '<=', $date_to)
+            ->with(['customer', 'driver'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(50);
+
+        $stats = [
+            'total_revenue' => Order::where('status', 'completed')
+                ->whereDate('created_at', '>=', $date_from)
+                ->whereDate('created_at', '<=', $date_to)
+                ->sum('fare_amount'),
+            'total_commission' => Order::where('status', 'completed')
+                ->whereDate('created_at', '>=', $date_from)
+                ->whereDate('created_at', '<=', $date_to)
+                ->sum('platform_commission'),
+            'driver_earnings' => Order::where('status', 'completed')
+                ->whereDate('created_at', '>=', $date_from)
+                ->whereDate('created_at', '<=', $date_to)
+                ->sum('driver_earning'),
+            'average_order_value' => Order::where('status', 'completed')
+                ->whereDate('created_at', '>=', $date_from)
+                ->whereDate('created_at', '<=', $date_to)
+                ->avg('fare_amount'),
+        ];
+
+        $orders->appends($request->query());
+
+        return view('admin.reports.financial', compact('orders', 'stats', 'date_from', 'date_to'));
+    }
+
     public function settings()
     {
         return view('admin.settings.index');
