@@ -219,11 +219,11 @@ class AdminDashboardController extends Controller
         }
 
         if ($request->has('date_from') && $request->get('date_from') !== '') {
-            $query->whereDate('created_at', '>=', $request->get('date_from'));
+            $query->where('created_at', '>=', $request->get('date_from') . ' 00:00:00');
         }
 
         if ($request->has('date_to') && $request->get('date_to') !== '') {
-            $query->whereDate('created_at', '<=', $request->get('date_to'));
+            $query->where('created_at', '<=', $request->get('date_to') . ' 23:59:59');
         }
 
         $orders = $query->orderBy('created_at', 'desc')->paginate(20);
