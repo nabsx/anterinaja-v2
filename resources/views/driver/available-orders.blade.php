@@ -40,14 +40,14 @@
                                 </div>
                                 <div>
                                     <span class="font-medium">Jarak:</span>
-                                    <span>{{ number_format($order->distance, 1) }} km</span>
+                                    <span>{{ number_format($order->distance_km ,1) }} km</span>
                                 </div>
                                 <div>
                                     <span class="font-medium">Estimasi:</span>
-                                    <span>{{ $order->estimated_duration }} menit</span>
+                                    <span>{{ $order->duration_minutes }} menit</span>
                                 </div>
                                 <div class="text-green-600 font-semibold">
-                                    Total: Rp {{ number_format($order->estimated_fare, 0, ',', '.') }}
+                                    Total: Rp {{ number_format($order->fare_amount, 0, ',', '.') }}
                                 </div>
                             </div>
 
@@ -64,6 +64,7 @@
                                 </span>
                                 <form action="{{ route('driver.orders.accept', $order) }}" method="POST">
                                     @csrf
+                                    @method('PUT')
                                     <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm" onclick="return confirm('Terima pesanan ini?')">
                                         Terima
                                     </button>

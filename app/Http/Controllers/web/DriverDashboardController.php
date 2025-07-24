@@ -113,12 +113,39 @@ class DriverDashboardController extends Controller
                 ->with('error', 'Akun Anda belum terverifikasi. Silakan lengkapi dokumen terlebih dahulu.');
         }
 
-        $orders = Order::where('status', 'pending')
-            ->where('vehicle_type', $driver->vehicle_type)
-            ->nearby($driver->current_latitude, $driver->current_longitude, 10)
-            ->with('customer')
-            ->latest()
-            ->get();
+        // Get available orders with distance calculation
+        $orders = collect();
+        
+        if ($driver->current_latitude && $driver->current_longitude) {
+            // Get all pending orders for the driver's vehicle type
+            $allOrders = Order::where('status', 'pending')
+                ->where('vehicle_type', $driver->vehicle_type)
+                ->with('customer')
+                ->latest()
+                ->get();
+
+            // Filter orders within 10km radius
+            $orders = $allOrders->filter(function ($order) use ($driver) {
+                $distance = $this->calculateDistance(
+                    $driver->current_latitude,
+                    $driver->current_longitude,
+                    $order->pickup_latitude,
+                    $order->pickup_longitude
+                );
+                
+                // Add distance to order object for display
+                $order->distance_from_driver = $distance;
+                
+                return $distance <= 10; // 10km radius
+            })->sortBy('distance_from_driver');
+        } else {
+            // If driver location is not available, show all pending orders for their vehicle type
+            $orders = Order::where('status', 'pending')
+                ->where('vehicle_type', $driver->vehicle_type)
+                ->with('customer')
+                ->latest()
+                ->get();
+        }
 
         return view('driver.available-orders', compact('orders'));
     }
@@ -321,5 +348,24 @@ class DriverDashboardController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Calculate distance between two coordinates using Haversine formula
+     */
+    private function calculateDistance($lat1, $lng1, $lat2, $lng2)
+    {
+        $earthRadius = 6371; // km
+
+        $latDelta = deg2rad($lat2 - $lat1);
+        $lngDelta = deg2rad($lng2 - $lng1);
+
+        $a = sin($latDelta / 2) * sin($latDelta / 2) +
+             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+             sin($lngDelta / 2) * sin($lngDelta / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+
+        return $earthRadius * $c;
     }
 }
