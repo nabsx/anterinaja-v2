@@ -148,11 +148,11 @@ class AdminDashboardController extends Controller
         }
 
         if ($request->has('vehicle_type') && $request->get('vehicle_type') !== '') {
-            $query->where('vehicle_type_id', $request->get('vehicle_type'));
+            $query->where('vehicle_type', $request->get('vehicle_type'));
         }
 
         $drivers = $query->orderBy('created_at', 'desc')->paginate(20);
-        $vehicle_types = VehicleType::all();
+        $vehicle_types = ['motorcycle', 'car']; 
 
         return view('admin.drivers.index', compact('drivers', 'vehicle_types'));
     }
