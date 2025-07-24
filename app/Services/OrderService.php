@@ -113,10 +113,10 @@ class OrderService
     /**
      * Update order status
      */
-    public function updateOrderStatus($orderId, $status, $driverId = null, $additionalData = [])
+    public function updateOrderStatus($order, $status, $additionalData = [])
     {
         try {
-            $order = Order::findOrFail($orderId);
+            DB::beginTransaction();
             
             $updateData = [
                 'status' => $status,
@@ -125,16 +125,9 @@ class OrderService
 
             // Handle status-specific updates
             switch ($status) {
-                case 'accepted':
-                    if (!$driverId) {
-                        throw new \Exception('Driver ID is required for accepted status');
-                    }
-                    $updateData['driver_id'] = $driverId;
-                    $updateData['accepted_at'] = now();
-                    break;
-
                 case 'driver_arrived':
-                    $updateData['driver_arrived_at'] = now();
+                case 'picking_up':
+                    $updateData['picked_up_at'] = now();
                     break;
 
                 case 'in_progress':
@@ -153,6 +146,7 @@ class OrderService
                         if ($driver) {
                             // Add the pre-calculated driver earning to driver balance
                             $driver->balance += $order->driver_earning;
+                            $driver->status = 'available'; // Make driver available again
                             $driver->save();
                         }
                     }
@@ -162,10 +156,20 @@ class OrderService
                     $updateData['cancelled_at'] = now();
                     $updateData['cancellation_reason'] = $additionalData['reason'] ?? null;
                     $updateData['cancelled_by'] = $additionalData['cancelled_by'] ?? 'system';
+                    
+                    // Make driver available again if assigned
+                    if ($order->driver_id) {
+                        $driver = Driver::find($order->driver_id);
+                        if ($driver) {
+                            $driver->update(['status' => 'available']);
+                        }
+                    }
                     break;
             }
 
             $order->update($updateData);
+
+            DB::commit();
 
             // Send notifications
             $this->sendStatusNotification($order, $status);
@@ -177,10 +181,10 @@ class OrderService
             ];
 
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Order Status Update Error: ' . $e->getMessage(), [
-                'order_id' => $orderId,
+                'order_id' => $order->id,
                 'status' => $status,
-                'driver_id' => $driverId,
                 'trace' => $e->getTraceAsString()
             ]);
             return [
@@ -204,8 +208,9 @@ class OrderService
                     sin( radians(?) ) * 
                     sin( radians( drivers.current_latitude ) ) ) ) AS distance
                 ', [$order->pickup_latitude, $order->pickup_longitude, $order->pickup_latitude])
-                ->where('is_active', true)
-                ->where('is_available', true)
+                ->where('is_online', true)
+                ->where('is_verified', true)
+                ->where('status', 'available')
                 ->where('vehicle_type', $order->vehicle_type)
                 ->having('distance', '<=', $radiusKm)
                 ->orderBy('distance', 'asc')
@@ -268,7 +273,7 @@ class OrderService
                 $driver = Driver::find($order->driver_id);
                 if ($driver) {
                     $driver->update([
-                        'is_available' => true,
+                        'status' => 'available',
                     ]);
                     
                     Log::info('Driver made available after order cancellation', [
@@ -508,6 +513,84 @@ class OrderService
                 'success' => false,
                 'error' => 'Failed to submit rating'
             ];
+        }
+    }
+
+    public function acceptOrder(Order $order, Driver $driver)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Log driver status for debugging
+            Log::info('Attempting to accept order', [
+                'order_id' => $order->id,
+                'order_status' => $order->status,
+                'driver_id' => $driver->id,
+                'driver_is_verified' => $driver->is_verified,
+                'driver_is_online' => $driver->is_online,
+                'driver_status' => $driver->status
+            ]);
+
+            // Check if order is still available
+            if ($order->status !== 'pending') {
+                throw new \Exception('Order is no longer available. Current status: ' . $order->status);
+            }
+
+            // Check if driver is verified
+            if (!$driver->is_verified) {
+                throw new \Exception('Driver is not verified. Please complete verification process.');
+            }
+
+            // Check if driver is online and available (status should be 'available')
+            if (!$driver->is_online) {
+                throw new \Exception('Driver is not online. Please go online first.');
+            }
+
+            if ($driver->status !== 'available') {
+                throw new \Exception('Driver is not available. Current status: ' . $driver->status);
+            }
+
+            // Update order
+            $order->update([
+                'driver_id' => $driver->id,
+                'status' => 'accepted',
+                'accepted_at' => now(),
+            ]);
+
+            // Update driver status to busy
+            $driver->update([
+                'status' => 'busy',
+                'last_active_at' => now(),
+            ]);
+
+            DB::commit();
+
+            // Send notifications
+            $this->sendStatusNotification($order->fresh(), 'accepted');
+
+            Log::info('Order accepted successfully', [
+                'order_id' => $order->id,
+                'driver_id' => $driver->id
+            ]);
+
+            return [
+                'success' => true,
+                'data' => $order->fresh()->load(['customer', 'driver']),
+                'message' => 'Order accepted successfully'
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Order Accept Error: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'driver_id' => $driver->id,
+                'driver_status' => $driver->status ?? 'unknown',
+                'driver_is_verified' => $driver->is_verified ?? 'unknown',
+                'driver_is_online' => $driver->is_online ?? 'unknown',
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            throw $e; // Re-throw to be caught by controller
         }
     }
 }
