@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\DriverDocument;
+use App\Models\Rating;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class DriverDashboardController extends Controller
 {
@@ -43,8 +45,53 @@ class DriverDashboardController extends Controller
             ->whereDate('completed_at', today())
             ->sum('driver_earning');
 
+        // Get rating statistics
+        $averageRating = Rating::where('driver_id', $driver->id)
+            ->where('rated_by', 'customer')
+            ->avg('rating') ?? 0;
+        
+        $totalRatings = Rating::where('driver_id', $driver->id)
+            ->where('rated_by', 'customer')
+            ->count();
+
         return view('driver.dashboard', compact(
-            'user', 'driver', 'recentOrders', 'totalOrders', 'completedOrders', 'activeOrders', 'todayEarnings'
+            'user', 'driver', 'recentOrders', 'totalOrders', 'completedOrders', 
+            'activeOrders', 'todayEarnings', 'averageRating', 'totalRatings'
+        ));
+    }
+
+    public function ratings()
+    {
+        $driver = Auth::user()->driver;
+
+        // Get all ratings for this driver (anonymous)
+        $ratings = Rating::where('driver_id', $driver->id)
+            ->where('rated_by', 'customer')
+            ->with(['order' => function($query) {
+                $query->select('id', 'order_code', 'distance_km', 'vehicle_type');
+            }])
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        // Calculate statistics
+        $averageRating = Rating::where('driver_id', $driver->id)
+            ->where('rated_by', 'customer')
+            ->avg('rating') ?? 0;
+
+        $totalRatings = Rating::where('driver_id', $driver->id)
+            ->where('rated_by', 'customer')
+            ->count();
+
+        // Get rating distribution
+        $ratingStats = Rating::where('driver_id', $driver->id)
+            ->where('rated_by', 'customer')
+            ->select('rating', DB::raw('count(*) as count'))
+            ->groupBy('rating')
+            ->pluck('count', 'rating')
+            ->toArray();
+
+        return view('driver.ratings', compact(
+            'ratings', 'averageRating', 'totalRatings', 'ratingStats'
         ));
     }
 
@@ -104,18 +151,18 @@ class DriverDashboardController extends Controller
         return view('driver.order-detail', compact('order'));
     }
 
-    public function availableOrders()
+        public function availableOrders()
     {
         $driver = Auth::user()->driver;
 
+        // Initialize empty orders collection
+        $orders = collect();
+
         if (!$driver->is_verified) {
-            return view('driver.available-orders')
+            return view('driver.available-orders', compact('orders'))
                 ->with('error', 'Akun Anda belum terverifikasi. Silakan lengkapi dokumen terlebih dahulu.');
         }
 
-        // Get available orders with distance calculation
-        $orders = collect();
-        
         if ($driver->current_latitude && $driver->current_longitude) {
             // Get all pending orders for the driver's vehicle type
             $allOrders = Order::where('status', 'pending')
@@ -145,6 +192,11 @@ class DriverDashboardController extends Controller
                 ->with('customer')
                 ->latest()
                 ->get();
+            
+            // Add distance_from_driver property even if we can't calculate it
+            $orders->each(function ($order) {
+                $order->distance_from_driver = null;
+            });
         }
 
         return view('driver.available-orders', compact('orders'));

@@ -62,7 +62,7 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::put('/profile', [DriverDashboardController::class, 'updateProfile'])->name('driver.profile.update');
         Route::get('/orders', [DriverDashboardController::class, 'orders'])->name('driver.orders');
         Route::get('/orders/{order}', [DriverDashboardController::class, 'orderDetail'])->name('driver.orders.show');
-        Route::get('/available-orders', [DriverDashboardController::class, 'availableOrders'])->name('driver.available.orders');
+        Route::get('/available-orders', [DriverDashboardController::class, 'availableOrders'])->name('driver.available-orders');
         Route::get('/debug-orders', [DriverController::class, 'debugOrders']);
         Route::put('/orders/{order}/accept', [DriverDashboardController::class, 'acceptOrder'])->name('driver.orders.accept');
         Route::patch('/orders/{order}/update-status', [DriverDashboardController::class, 'updateOrderStatus'])->name('driver.orders.update-status');
@@ -71,6 +71,7 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::post('/documents', [DriverDashboardController::class, 'uploadDocument'])->name('driver.documents.upload');
         Route::put('/status', [DriverDashboardController::class, 'updateStatus'])->name('driver.status.update');
         Route::put('/location', [DriverDashboardController::class, 'updateLocation'])->name('driver.location.update');
+        Route::get('/ratings', [DriverDashboardController::class, 'ratings'])->name('driver.ratings');
     });
     
     // Admin dashboard routes

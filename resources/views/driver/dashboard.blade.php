@@ -1,253 +1,209 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard Driver - AnterinAja')
+@section('title', 'Dashboard Driver')
 
 @section('content')
-<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-    <div class="px-4 py-6 sm:px-0">
-        <!-- Header with Online Status -->
-        <div class="bg-white overflow-hidden shadow rounded-lg mb-6">
-            <div class="px-4 py-5 sm:p-6">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <img src="{{ $user->avatar_url }}" alt="Avatar" class="h-16 w-16 rounded-full">
-                        <div class="ml-4">
-                            <h1 class="text-2xl font-bold text-gray-900">{{ $user->name }}</h1>
-                            <p class="text-gray-600">Driver {{ $driver->vehicle_info }}</p>
-                            <div class="flex items-center mt-1">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                    @if($driver->is_verified) bg-green-100 text-green-800 @else bg-red-100 text-red-800 @endif">
-                                    @if($driver->is_verified) 
-                                        <i class="fas fa-check-circle mr-1"></i> Terverifikasi
-                                    @else 
-                                        <i class="fas fa-times-circle mr-1"></i> Belum Terverifikasi
-                                    @endif
-                                </span>
-                                <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                    @if($driver->is_online) bg-green-100 text-green-800 @else bg-gray-100 text-gray-800 @endif">
-                                    @if($driver->is_online) 
-                                        <i class="fas fa-circle mr-1 text-green-500"></i> Online
-                                    @else 
-                                        <i class="fas fa-circle mr-1 text-gray-500"></i> Offline
-                                    @endif
-                                </span>
-                            </div>
+<div class="container mx-auto px-4 py-6">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Dashboard Driver</h1>
+                <p class="text-gray-600">Selamat datang, {{ $user->name }}!</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <!-- Online/Offline Toggle -->
+                <form action="{{ route('driver.status.update') }}" method="POST" class="inline">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="is_online" value="{{ $driver->is_online ? '0' : '1' }}">
+                    <button type="submit" class="flex items-center px-4 py-2 rounded-lg font-medium transition-colors
+                        {{ $driver->is_online ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-gray-600 hover:bg-gray-700 text-white' }}">
+                        <div class="w-2 h-2 rounded-full mr-2 {{ $driver->is_online ? 'bg-green-300' : 'bg-gray-300' }}"></div>
+                        {{ $driver->is_online ? 'Online' : 'Offline' }}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <!-- Total Orders -->
+            <div class="bg-white rounded-lg shadow-sm border p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-blue-100 rounded-lg">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Total Pesanan</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ $totalOrders }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Completed Orders -->
+            <div class="bg-white rounded-lg shadow-sm border p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-green-100 rounded-lg">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Selesai</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ $completedOrders }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Orders -->
+            <div class="bg-white rounded-lg shadow-sm border p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-yellow-100 rounded-lg">
+                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Aktif</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ $activeOrders }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Today Earnings -->
+            <div class="bg-white rounded-lg shadow-sm border p-6">
+                <div class="flex items-center">
+                    <div class="p-2 bg-purple-100 rounded-lg">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Pendapatan Hari Ini</p>
+                        <p class="text-2xl font-bold text-gray-900">Rp {{ number_format($todayEarnings, 0, ',', '.') }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rating Summary -->
+        <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Rating & Ulasan</h3>
+                    <p class="text-gray-600">Feedback dari customer Anda</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-center">
+                        <div class="flex items-center">
+                            <span class="text-2xl font-bold text-yellow-600">{{ number_format($averageRating, 1) }}</span>
+                            <svg class="w-6 h-6 text-yellow-400 fill-current ml-1" viewBox="0 0 20 20">
+                                <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                            </svg>
                         </div>
+                        <p class="text-sm text-gray-600">{{ $totalRatings }} ulasan</p>
+                    </div>
+                    <a href="{{ route('driver.ratings') }}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-colors">
+                        Lihat Semua Rating
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Quick Actions -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Aksi Cepat</h3>
+                    <div class="space-y-3">
+                        <a href="{{ route('driver.available-orders') }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                            Cari Pesanan
+                        </a>
+                        <a href="{{ route('driver.orders') }}" class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                            Riwayat Pesanan
+                        </a>
+                        <a href="{{ route('driver.earnings') }}" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                            </svg>
+                            Pendapatan
+                        </a>
+                        <a href="{{ route('driver.profile') }}" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            Profil
+                        </a>
+                        <a href="{{ route('driver.documents') }}" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <div>
+                                <div class="font-semibold">Dokumen</div>
+                                <div class="text-xs text-blue-100">Upload dokumen</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900">Pesanan Terbaru</h3>
+                        <a href="{{ route('driver.orders') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                            Lihat Semua
+                        </a>
                     </div>
                     
-                    <!-- Online Toggle -->
-                    <div class="flex items-center space-x-4">
-                        @if($driver->is_verified)
-                            <form method="POST" action="{{ route('driver.status.update') }}" class="inline">
-                                @csrf
-                                @method('PUT')
-                                <input type="hidden" name="is_online" value="{{ $driver->is_online ? '0' : '1' }}">
-                                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
-                                    @if($driver->is_online) bg-red-600 hover:bg-red-700 @else bg-green-600 hover:bg-green-700 @endif">
-                                    @if($driver->is_online)
-                                        <i class="fas fa-pause mr-2"></i> Go Offline
-                                    @else
-                                        <i class="fas fa-play mr-2"></i> Go Online
-                                    @endif
-                                </button>
-                            </form>
-                        @else
-                            <a href="{{ route('driver.documents') }}" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                                <i class="fas fa-upload mr-2"></i> Lengkapi Dokumen
-                            </a>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <a href="{{ route('driver.available.orders') }}" class="bg-blue-600 hover:bg-blue-700 text-white p-6 rounded-lg shadow-lg transition transform hover:scale-105">
-                <div class="flex items-center">
-                    <i class="fas fa-list-alt text-3xl mr-4"></i>
-                    <div>
-                        <h3 class="text-lg font-semibold">Pesanan Tersedia</h3>
-                        <p class="text-blue-100">Lihat pesanan baru</p>
-                    </div>
-                </div>
-            </a>
-
-            <a href="{{ route('driver.orders') }}" class="bg-green-600 hover:bg-green-700 text-white p-6 rounded-lg shadow-lg transition transform hover:scale-105">
-                <div class="flex items-center">
-                    <i class="fas fa-history text-3xl mr-4"></i>
-                    <div>
-                        <h3 class="text-lg font-semibold">Riwayat</h3>
-                        <p class="text-green-100">Pesanan saya</p>
-                    </div>
-                </div>
-            </a>
-
-            <a href="{{ route('driver.earnings') }}" class="bg-yellow-600 hover:bg-yellow-700 text-white p-6 rounded-lg shadow-lg transition transform hover:scale-105">
-                <div class="flex items-center">
-                    <i class="fas fa-money-bill-wave text-3xl mr-4"></i>
-                    <div>
-                        <h3 class="text-lg font-semibold">Pendapatan</h3>
-                        <p class="text-yellow-100">Lihat earning</p>
-                    </div>
-                </div>
-            </a>
-
-            <a href="{{ route('driver.documents') }}" class="bg-purple-600 hover:bg-purple-700 text-white p-6 rounded-lg shadow-lg transition transform hover:scale-105">
-                <div class="flex items-center">
-                    <i class="fas fa-file-alt text-3xl mr-4"></i>
-                    <div>
-                        <h3 class="text-lg font-semibold">Dokumen</h3>
-                        <p class="text-purple-100">Upload dokumen</p>
-                    </div>
-                </div>
-            </a>
-        </div>
-
-        <!-- Statistics -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <div class="bg-white overflow-hidden shadow rounded-lg">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-chart-line text-2xl text-blue-600"></i>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Total Trip</dt>
-                                <dd class="text-lg font-medium text-gray-900">{{ $totalOrders }}</dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white overflow-hidden shadow rounded-lg">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-check-circle text-2xl text-green-600"></i>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Trip Selesai</dt>
-                                <dd class="text-lg font-medium text-gray-900">{{ $completedOrders }}</dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white overflow-hidden shadow rounded-lg">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-star text-2xl text-yellow-600"></i>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Rating</dt>
-                                <dd class="text-lg font-medium text-gray-900">{{ $driver->formatted_rating }}</dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white overflow-hidden shadow rounded-lg">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-wallet text-2xl text-green-600"></i>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Saldo</dt>
-                                <dd class="text-lg font-medium text-gray-900">{{ $driver->formatted_balance }}</dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Today's Earnings -->
-        <div class="bg-gradient-to-r from-green-400 to-blue-500 rounded-lg shadow-lg p-6 mb-6">
-            <div class="text-white">
-                <h3 class="text-lg font-semibold mb-2">Pendapatan Hari Ini</h3>
-                <div class="text-3xl font-bold">Rp {{ number_format($todayEarnings, 0, ',', '.') }}</div>
-                <p class="text-green-100 mt-1">Keep up the good work!</p>
-            </div>
-        </div>
-
-        <!-- Recent Orders -->
-        <div class="bg-white shadow overflow-hidden sm:rounded-md">
-            <div class="px-4 py-5 sm:px-6">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Trip Terbaru</h3>
-                <p class="mt-1 max-w-2xl text-sm text-gray-500">5 trip terakhir Anda</p>
-            </div>
-            
-            @if($recentOrders->count() > 0)
-                <ul class="divide-y divide-gray-200">
-                    @foreach($recentOrders as $order)
-                        <li>
-                            <a href="{{ route('driver.orders.show', $order) }}" class="block hover:bg-gray-50">
-                                <div class="px-4 py-4 sm:px-6">
+                    @if($recentOrders->count() > 0)
+                        <div class="space-y-4">
+                            @foreach($recentOrders as $order)
+                                <div class="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
                                     <div class="flex items-center justify-between">
-                                        <div class="flex items-center">
-                                            <div class="flex-shrink-0">
-                                                @if($order->status === 'completed')
-                                                    <i class="fas fa-check-circle text-green-500 text-xl"></i>
-                                                @elseif($order->status === 'cancelled')
-                                                    <i class="fas fa-times-circle text-red-500 text-xl"></i>
-                                                @else
-                                                    <i class="fas fa-clock text-yellow-500 text-xl"></i>
-                                                @endif
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-3">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                                    @if($order->status === 'pending') bg-yellow-100 text-yellow-800
+                                                    @elseif($order->status === 'accepted') bg-blue-100 text-blue-800
+                                                    @elseif($order->status === 'completed') bg-green-100 text-green-800
+                                                    @elseif($order->status === 'cancelled') bg-red-100 text-red-800
+                                                    @endif">
+                                                    {{ $order->status_label }}
+                                                </span>
+                                                <span class="text-sm font-medium text-gray-900">{{ $order->order_code }}</span>
                                             </div>
-                                            <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    {{ $order->customer->name ?? 'Customer' }}
-                                                </div>
-                                                <div class="text-sm text-gray-500">
-                                                    {{ $order->pickup_address }} → {{ $order->destination_address }}
-                                                </div>
-                                                <div class="text-sm text-gray-500">
-                                                    {{ $order->created_at->format('d M Y H:i') }}
-                                                </div>
-                                            </div>
+                                            <p class="text-sm text-gray-600 mt-1">{{ $order->customer->name }}</p>
+                                            <p class="text-sm text-gray-500">{{ $order->pickup_address }}</p>
                                         </div>
-                                        <div class="flex items-center">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                                @if($order->status === 'completed') bg-green-100 text-green-800
-                                                @elseif($order->status === 'cancelled') bg-red-100 text-red-800
-                                                @else bg-yellow-100 text-yellow-800 @endif">
-                                                {{ ucfirst($order->status) }}
-                                            </span>
-                                            <span class="ml-2 text-sm font-medium text-gray-900">
-                                                Rp {{ number_format($order->driver_earning ?? $order->total_fare, 0, ',', '.') }}
-                                            </span>
+                                        <div class="text-right">
+                                            <p class="text-sm font-medium text-gray-900">Rp {{ number_format($order->driver_earning, 0, ',', '.') }}</p>
+                                            <p class="text-xs text-gray-500">{{ $order->created_at->format('d M, H:i') }}</p>
                                         </div>
                                     </div>
                                 </div>
-                            </a>
-                        </li>
-                    @endforeach
-                </ul>
-            @else
-                <div class="px-4 py-12 text-center">
-                    <i class="fas fa-car text-4xl text-gray-400 mb-4"></i>
-                    <p class="text-gray-500">Belum ada trip.</p>
-                    @if($driver->is_verified)
-                        <a href="{{ route('driver.available.orders') }}" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                            Cari Pesanan
-                        </a>
+                            @endforeach
+                        </div>
                     @else
-                        <a href="{{ route('driver.documents') }}" class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                            Lengkapi Dokumen
-                        </a>
+                        <div class="text-center py-8">
+                            <svg class="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                            <p class="text-gray-500">Belum ada pesanan</p>
+                        </div>
                     @endif
                 </div>
-            @endif
+            </div>
         </div>
     </div>
 </div>
