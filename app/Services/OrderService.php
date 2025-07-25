@@ -155,14 +155,27 @@ class OrderService
                         $updateData['actual_fare'] = $additionalData['actual_fare'];
                     }
                     
-                    // Use the stored driver earning instead of recalculating
+                    // FIXED LOGIC: Deduct platform commission from driver balance
                     if ($order->driver_id) {
                         $driver = Driver::find($order->driver_id);
                         if ($driver) {
-                            // Add the pre-calculated driver earning to driver balance
-                            $driver->balance += $order->driver_earning;
+                            // Check if driver has sufficient balance for commission
+                            if ($driver->balance < $order->platform_commission) {
+                                throw new \Exception('Insufficient balance. Driver balance: Rp ' . number_format($driver->balance, 0, ',', '.') . 
+                                                   ', Required commission: Rp ' . number_format($order->platform_commission, 0, ',', '.'));
+                            }
+                            
+                            // Deduct platform commission from driver balance
+                            $driver->balance -= $order->platform_commission;
                             $driver->status = 'available'; // Make driver available again
                             $driver->save();
+                            
+                            Log::info('Driver commission deducted', [
+                                'driver_id' => $driver->id,
+                                'order_id' => $order->id,
+                                'commission_deducted' => $order->platform_commission,
+                                'remaining_balance' => $driver->balance
+                            ]);
                         }
                     }
                     break;
@@ -228,6 +241,7 @@ class OrderService
                 ->where('is_verified', true)
                 ->where('status', 'available')
                 ->where('vehicle_type', $order->vehicle_type)
+                ->where('balance', '>=', $order->platform_commission) // Check if driver has sufficient balance
                 ->having('distance', '<=', $radiusKm)
                 ->orderBy('distance', 'asc')
                 ->limit(10)
@@ -544,7 +558,9 @@ class OrderService
                 'driver_id' => $driver->id,
                 'driver_is_verified' => $driver->is_verified,
                 'driver_is_online' => $driver->is_online,
-                'driver_status' => $driver->status
+                'driver_status' => $driver->status,
+                'driver_balance' => $driver->balance,
+                'required_commission' => $order->platform_commission
             ]);
 
             // Check if order is still available
@@ -564,6 +580,13 @@ class OrderService
 
             if ($driver->status !== 'available') {
                 throw new \Exception('Driver is not available. Current status: ' . $driver->status);
+            }
+
+            // FIXED: Check if driver has sufficient balance for commission
+            if ($driver->balance < $order->platform_commission) {
+                throw new \Exception('Insufficient balance. Your balance: Rp ' . number_format($driver->balance, 0, ',', '.') . 
+                                   ', Required commission: Rp ' . number_format($order->platform_commission, 0, ',', '.') . 
+                                   '. Please top up your balance.');
             }
 
             // Update order
@@ -603,6 +626,8 @@ class OrderService
                 'driver_status' => $driver->status ?? 'unknown',
                 'driver_is_verified' => $driver->is_verified ?? 'unknown',
                 'driver_is_online' => $driver->is_online ?? 'unknown',
+                'driver_balance' => $driver->balance ?? 'unknown',
+                'required_commission' => $order->platform_commission ?? 'unknown',
                 'trace' => $e->getTraceAsString()
             ]);
             

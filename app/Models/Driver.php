@@ -108,6 +108,11 @@ class Driver extends Model
         );
     }
 
+    public function scopeWithSufficientBalance($query, $requiredAmount)
+    {
+        return $query->where('balance', '>=', $requiredAmount);
+    }
+
     // Accessors
     public function getVehicleInfoAttribute()
     {
@@ -134,6 +139,28 @@ class Driver extends Model
     public function getFormattedBalanceAttribute()
     {
         return 'Rp ' . number_format($this->balance, 0, ',', '.');
+    }
+
+    public function getBalanceStatusAttribute()
+    {
+        if ($this->balance <= 0) {
+            return 'insufficient';
+        } elseif ($this->balance < 50000) { // Warning threshold
+            return 'low';
+        } else {
+            return 'sufficient';
+        }
+    }
+
+    public function getBalanceStatusLabelAttribute()
+    {
+        $labels = [
+            'insufficient' => 'Saldo Tidak Cukup',
+            'low' => 'Saldo Rendah',
+            'sufficient' => 'Saldo Cukup'
+        ];
+
+        return $labels[$this->balance_status] ?? 'Unknown';
     }
 
     // Methods
@@ -203,18 +230,72 @@ class Driver extends Model
         return $earthRadius * $c;
     }
 
+    /**
+     * Add balance (for top-ups)
+     */
     public function addBalance($amount)
     {
         $this->increment('balance', $amount);
+        
+        \Log::info('Driver balance topped up', [
+            'driver_id' => $this->id,
+            'amount_added' => $amount,
+            'new_balance' => $this->fresh()->balance
+        ]);
     }
 
+    /**
+     * Deduct balance (for commission payments)
+     */
     public function deductBalance($amount)
     {
         if ($this->balance >= $amount) {
             $this->decrement('balance', $amount);
+            
+            \Log::info('Driver balance deducted', [
+                'driver_id' => $this->id,
+                'amount_deducted' => $amount,
+                'remaining_balance' => $this->fresh()->balance
+            ]);
+            
             return true;
         }
+        
+        \Log::warning('Insufficient balance for deduction', [
+            'driver_id' => $this->id,
+            'current_balance' => $this->balance,
+            'attempted_deduction' => $amount
+        ]);
+        
         return false;
+    }
+
+    /**
+     * Check if driver has sufficient balance for commission
+     */
+    public function hasSufficientBalance($requiredAmount)
+    {
+        return $this->balance >= $requiredAmount;
+    }
+
+    /**
+     * Get minimum balance required to go online
+     */
+    public function getMinimumBalanceRequired()
+    {
+        // You can set this based on your business logic
+        // For example, minimum balance should cover at least 2-3 average commissions
+        return 10000; // Rp 10,000
+    }
+
+    /**
+     * Check if driver can go online (has minimum balance)
+     */
+    public function canGoOnline()
+    {
+        return $this->is_verified && 
+               $this->balance >= $this->getMinimumBalanceRequired() &&
+               $this->hasRequiredDocuments();
     }
 
     public function incrementTrips()
@@ -256,6 +337,5 @@ class Driver extends Model
     public function vehicleType()
     {
         return $this->belongsTo(VehicleType::class, 'vehicle_type', 'name');
-        
     }
 }
