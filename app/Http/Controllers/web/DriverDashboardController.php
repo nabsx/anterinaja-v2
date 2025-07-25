@@ -170,7 +170,7 @@ class DriverDashboardController extends Controller
     public function updateOrderStatus(Request $request, Order $order)
     {
         $request->validate([
-            'status' => 'required|in:picking_up,in_progress,completed',
+            'status' => 'required|in:driver_arrived,picked_up,in_progress,completed',
         ]);
 
         if ($order->driver_id !== Auth::user()->driver->id) {
@@ -178,7 +178,16 @@ class DriverDashboardController extends Controller
         }
 
         try {
-            $this->orderService->updateOrderStatus($order, $request->status);
+            $result = $this->orderService->updateOrderStatus(
+                $order->id, 
+                $request->status, 
+                Auth::user()->driver->id
+            );
+        
+            if (!$result['success']) {
+                return back()->with('error', $result['error']);
+            }
+        
             return back()->with('success', 'Status pesanan berhasil diperbarui.');
         } catch (\Exception $e) {
             return back()->with('error', 'Gagal memperbarui status. ' . $e->getMessage());

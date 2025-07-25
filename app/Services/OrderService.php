@@ -113,11 +113,23 @@ class OrderService
     /**
      * Update order status
      */
-    public function updateOrderStatus($order, $status, $additionalData = [])
+    public function updateOrderStatus($orderId, $status, $driverId = null, $additionalData = [])
     {
         try {
             DB::beginTransaction();
             
+            // Get the order - handle both Order object and ID
+            if (is_object($orderId)) {
+                $order = $orderId;
+            } else {
+                $order = Order::findOrFail($orderId);
+            }
+            
+            // Verify driver ownership if driverId is provided
+            if ($driverId && $order->driver_id !== $driverId) {
+                throw new \Exception('Unauthorized: Driver does not own this order');
+            }
+        
             $updateData = [
                 'status' => $status,
                 'updated_at' => now()
@@ -126,12 +138,15 @@ class OrderService
             // Handle status-specific updates
             switch ($status) {
                 case 'driver_arrived':
-                case 'picking_up':
-                    $updateData['picked_up_at'] = now();
+                    $updateData['pickup_arrived_at'] = now();
+                    break;
+
+                case 'picked_up':
+                    $updateData['started_at'] = now();
                     break;
 
                 case 'in_progress':
-                    $updateData['started_at'] = now();
+                    $updateData['started_at'] = $updateData['started_at'] ?? now();
                     break;
 
                 case 'completed':
@@ -183,8 +198,9 @@ class OrderService
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Order Status Update Error: ' . $e->getMessage(), [
-                'order_id' => $order->id,
+                'order_id' => is_object($orderId) ? $orderId->id : $orderId,
                 'status' => $status,
+                'driver_id' => $driverId,
                 'trace' => $e->getTraceAsString()
             ]);
             return [

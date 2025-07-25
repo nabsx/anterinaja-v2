@@ -5,123 +5,246 @@
 @section('content')
 <div class="container mx-auto px-4 py-6">
     <div class="max-w-4xl mx-auto">
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-bold text-gray-800">Detail Pesanan #{{ $order->id }}</h1>
-                @php
-                    $statusColors = [
-                        'pending' => 'bg-yellow-100 text-yellow-800',
-                        'accepted' => 'bg-blue-100 text-blue-800',
-                        'picking_up' => 'bg-purple-100 text-purple-800',
-                        'in_progress' => 'bg-indigo-100 text-indigo-800',
-                        'completed' => 'bg-green-100 text-green-800',
-                        'cancelled' => 'bg-red-100 text-red-800',
-                    ];
-                @endphp
-                <span class="px-3 py-1 text-sm font-semibold rounded-full {{ $statusColors[$order->status] ?? 'bg-gray-100 text-gray-800' }}">
-                    {{ ucfirst($order->status) }}
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Detail Pesanan</h1>
+                <p class="text-gray-600">{{ $order->order_code }}</p>
+            </div>
+            <div class="text-right">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+                    @if($order->status === 'pending') bg-yellow-100 text-yellow-800
+                    @elseif($order->status === 'accepted') bg-blue-100 text-blue-800
+                    @elseif($order->status === 'driver_arrived') bg-purple-100 text-purple-800
+                    @elseif($order->status === 'picked_up') bg-indigo-100 text-indigo-800
+                    @elseif($order->status === 'completed') bg-green-100 text-green-800
+                    @elseif($order->status === 'cancelled') bg-red-100 text-red-800
+                    @endif">
+                    @if($order->status === 'pending') Menunggu Driver
+                    @elseif($order->status === 'accepted') Driver Diterima
+                    @elseif($order->status === 'driver_arrived') Sampai di Pickup
+                    @elseif($order->status === 'picked_up') Dalam Perjalanan
+                    @elseif($order->status === 'completed') Selesai
+                    @elseif($order->status === 'cancelled') Dibatalkan
+                    @endif
                 </span>
             </div>
+        </div>
 
-            @if(session('success'))
-                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                    {{ session('success') }}
-                </div>
-            @endif
-
-            @if(session('error'))
-                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                    {{ session('error') }}
-                </div>
-            @endif
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Customer Information -->
-                <div class="space-y-4">
-                    <h3 class="text-lg font-semibold text-gray-800">Informasi Customer</h3>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <p><span class="font-medium">Nama:</span> {{ $order->customer->name }}</p>
-                        <p><span class="font-medium">Telepon:</span> {{ $order->customer->phone }}</p>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Main Content -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Customer Info -->
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Informasi Customer</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-900">{{ $order->customer->name }}</p>
+                                <p class="text-sm text-gray-600">{{ $order->customer->phone }}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Order Information -->
-                <div class="space-y-4">
-                    <h3 class="text-lg font-semibold text-gray-800">Informasi Pesanan</h3>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <p><span class="font-medium">Jenis Layanan:</span> {{ ucfirst($order->order_type) }}</p>
-                        <p><span class="font-medium">Jarak:</span> {{ number_format($order->distance_km, 1) }} km</p>
-                        <p><span class="font-medium">Estimasi Waktu:</span> {{ $order->estimated_duration }} menit</p>
-                        <p><span class="font-medium">Total:</span> Rp {{ number_format($order->fare_amount, 0, ',', '.') }}</p>
-                        @if($order->driver_earning)
-                            <p><span class="font-medium">Pendapatan Driver:</span> Rp {{ number_format($order->driver_earning, 0, ',', '.') }}</p>
+                <!-- Route Info -->
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Rute Perjalanan</h3>
+                    <div class="space-y-4">
+                        <!-- Pickup -->
+                        <div class="flex items-start">
+                            <div class="w-4 h-4 bg-green-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div class="flex-1">
+                                <p class="font-medium text-gray-900">Lokasi Pickup</p>
+                                <p class="text-sm text-gray-600">{{ $order->pickup_address }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Line -->
+                        <div class="flex items-center">
+                            <div class="w-4 flex justify-center mr-3">
+                                <div class="w-0.5 h-8 bg-gray-300"></div>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-xs text-gray-500">{{ number_format($order->distance_km, 1) }} km • {{ number_format($order->duration_minutes) }} menit</p>
+                            </div>
+                        </div>
+
+                        <!-- Destination -->
+                        <div class="flex items-start">
+                            <div class="w-4 h-4 bg-red-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div class="flex-1">
+                                <p class="font-medium text-gray-900">Tujuan</p>
+                                <p class="text-sm text-gray-600">{{ $order->destination_address }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if($order->notes)
+                    <div class="mt-4 p-3 bg-yellow-50 rounded-lg">
+                        <p class="text-sm text-yellow-800">
+                            <span class="font-medium">Catatan:</span> {{ $order->notes }}
+                        </p>
+                    </div>
+                    @endif
+                </div>
+
+                <!-- Status Update Buttons -->
+                @if(in_array($order->status, ['accepted', 'driver_arrived', 'picked_up']))
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Update Status</h3>
+                    <div class="space-y-3">
+                        @if($order->status === 'accepted')
+                        <form action="{{ route('driver.orders.update-status', $order) }}" method="POST" class="inline">
+                            @csrf
+                            @method('PATCH')
+                            <input type="hidden" name="status" value="driver_arrived">
+                            <button type="submit" class="w-full bg-purple-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors">
+                                Sudah Sampai di Lokasi Pickup
+                            </button>
+                        </form>
+                        @endif
+
+                        @if($order->status === 'driver_arrived')
+                        <form action="{{ route('driver.orders.update-status', $order) }}" method="POST" class="inline">
+                            @csrf
+                            @method('PATCH')
+                            <input type="hidden" name="status" value="picked_up">
+                            <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors">
+                                Mulai Perjalanan ke Tujuan
+                            </button>
+                        </form>
+                        @endif
+
+                        @if($order->status === 'picked_up')
+                        <form action="{{ route('driver.orders.update-status', $order) }}" method="POST" class="inline">
+                            @csrf
+                            @method('PATCH')
+                            <input type="hidden" name="status" value="completed">
+                            <button type="submit" class="w-full bg-green-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors">
+                                Selesai - Sudah Sampai Tujuan
+                            </button>
+                        </form>
+                        @endif
+                    </div>
+                </div>
+                @endif
+            </div>
+
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                <!-- Order Summary -->
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Ringkasan Pesanan</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Jenis Kendaraan</span>
+                            <span class="font-medium">
+                                {{ $order->vehicle_type === 'motorcycle' ? 'Motor' : 'Mobil' }}
+                            </span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Jarak</span>
+                            <span class="font-medium">{{ number_format($order->distance_km, 1) }} km</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Estimasi Waktu</span>
+                            <span class="font-medium">{{ number_format($order->duration_minutes) }} menit</span>
+                        </div>
+                        <hr>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Total Tarif</span>
+                            <span class="font-medium">Rp {{ number_format($order->fare_amount, 0, ',', '.') }}</span>
+                        </div>
+                        <div class="flex justify-between text-green-600">
+                            <span class="font-medium">Pendapatan Driver</span>
+                            <span class="font-bold">Rp {{ number_format($order->driver_earning, 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline -->
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Timeline</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <div class="w-3 h-3 bg-blue-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Pesanan Dibuat</p>
+                                <p class="text-xs text-gray-500">{{ $order->created_at->format('d M Y, H:i') }}</p>
+                            </div>
+                        </div>
+
+                        @if($order->accepted_at)
+                        <div class="flex items-start">
+                            <div class="w-3 h-3 bg-green-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Driver Menerima</p>
+                                <p class="text-xs text-gray-500">{{ $order->accepted_at->format('d M Y, H:i') }}</p>
+                            </div>
+                        </div>
+                        @endif
+
+                        @if($order->pickup_arrived_at || $order->status === 'driver_arrived')
+                        <div class="flex items-start">
+                            <div class="w-3 h-3 bg-purple-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Sampai di Pickup</p>
+                                <p class="text-xs text-gray-500">{{ ($order->pickup_arrived_at ?? now())->format('d M Y, H:i') }}</p>
+                            </div>
+                        </div>
+                        @endif
+
+                        @if($order->started_at || $order->status === 'picked_up')
+                        <div class="flex items-start">
+                            <div class="w-3 h-3 bg-indigo-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Perjalanan Dimulai</p>
+                                <p class="text-xs text-gray-500">{{ ($order->started_at ?? now())->format('d M Y, H:i') }}</p>
+                            </div>
+                        </div>
+                        @endif
+
+                        @if($order->completed_at)
+                        <div class="flex items-start">
+                            <div class="w-3 h-3 bg-green-600 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Pesanan Selesai</p>
+                                <p class="text-xs text-gray-500">{{ $order->completed_at->format('d M Y, H:i') }}</p>
+                            </div>
+                        </div>
+                        @endif
+
+                        @if($order->cancelled_at)
+                        <div class="flex items-start">
+                            <div class="w-3 h-3 bg-red-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Pesanan Dibatalkan</p>
+                                <p class="text-xs text-gray-500">{{ $order->cancelled_at->format('d M Y, H:i') }}</p>
+                                @if($order->cancellation_reason)
+                                <p class="text-xs text-gray-600 mt-1">Alasan: {{ $order->cancellation_reason }}</p>
+                                @endif
+                            </div>
+                        </div>
                         @endif
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Pickup & Destination -->
-            <div class="mt-6 space-y-4">
-                <h3 class="text-lg font-semibold text-gray-800">Lokasi</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="bg-blue-50 p-4 rounded-lg">
-                        <h4 class="font-medium text-blue-800 mb-2">Pickup</h4>
-                        <p class="text-sm text-blue-700">{{ $order->pickup_address }}</p>
-                    </div>
-                    <div class="bg-green-50 p-4 rounded-lg">
-                        <h4 class="font-medium text-green-800 mb-2">Destination</h4>
-                        <p class="text-sm text-green-700">{{ $order->destination_address }}</p>
-                    </div>
-                </div>
-            </div>
-
-            @if($order->notes)
-                <div class="mt-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Catatan</h3>
-                    <div class="bg-yellow-50 p-4 rounded-lg">
-                        <p class="text-yellow-800">{{ $order->notes }}</p>
-                    </div>
-                </div>
-            @endif
-
-            <!-- Status Update Form -->
-            @if(in_array($order->status, ['accepted', 'picking_up', 'in_progress']))
-                <div class="mt-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Update Status</h3>
-                    <form action="{{ route('driver.orders.update-status', $order) }}" method="POST" class="flex items-center space-x-4">
-                        @csrf
-                        @method('PATCH')
-                        <select name="status" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                            @if($order->status === 'accepted')
-                                <option value="picking_up">Menuju Pickup</option>
-                            @elseif($order->status === 'picking_up')
-                                <option value="in_progress">Perjalanan Dimulai</option>
-                            @elseif($order->status === 'in_progress')
-                                <option value="completed">Selesai</option>
-                            @endif
-                        </select>
-                        <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                            Update Status
-                        </button>
-                    </form>
-                </div>
-            @endif
-
-            <div class="mt-6 flex justify-between">
-                <a href="{{ route('driver.orders') }}" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
-                    Kembali ke Riwayat
-                </a>
-                
-                @if($order->status === 'pending')
-                    <form action="{{ route('driver.orders.accept', $order) }}" method="POST" class="inline">
-                        @csrf
-                        @method('PATCH')
-                        <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" onclick="return confirm('Terima pesanan ini?')">
-                            Terima Pesanan
-                        </button>
-                    </form>
-                @endif
-            </div>
+        <!-- Back Button -->
+        <div class="mt-6">
+            <a href="{{ route('driver.orders') }}" class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Kembali ke Daftar Pesanan
+            </a>
         </div>
     </div>
 </div>

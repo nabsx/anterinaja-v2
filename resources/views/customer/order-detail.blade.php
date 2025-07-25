@@ -322,10 +322,13 @@
                 @endif
 
                 @if($order->canBeRated())
-                    <a href="{{ route('customer.orders.rate', $order->id) }}" 
-                       class="bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center">
-                        <i class="fas fa-star mr-2"></i>Beri Rating
-                    </a>
+                    <form action="{{ route('customer.orders.rate', $order->id) }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" 
+                                class="bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center">
+                            <i class="fas fa-star mr-2"></i>Beri Rating
+                        </button>
+                    </form>
                 @endif
             </div>
         </div>
