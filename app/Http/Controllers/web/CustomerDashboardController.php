@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Rating;
 use App\Models\Driver;
 use App\Services\OrderService;
 use App\Services\FareCalculationService;
 use App\Services\OSRMService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CustomerDashboardController extends Controller
@@ -293,25 +295,109 @@ class CustomerDashboardController extends Controller
         }
     }
 
-    public function rateOrder(Request $request, Order $order)
+    public function showRatingForm(Order $order)
     {
+        // Check ownership
         if ($order->customer_id !== Auth::id()) {
-            abort(403);
+            abort(403, 'Unauthorized access to order');
+        }
+
+        // Check if order is completed
+        if ($order->status !== 'completed') {
+            return redirect()->route('customer.orders.show', $order->id)
+                ->with('error', 'Anda hanya dapat memberikan rating untuk pesanan yang sudah selesai.');
+        }
+
+        // Check if already rated
+        $existingRating = Rating::where('order_id', $order->id)
+            ->where('rated_by', 'customer')
+            ->first();
+
+        if ($existingRating) {
+            return redirect()->route('customer.orders.show', $order->id)
+                ->with('error', 'Anda sudah memberikan rating untuk pesanan ini.');
+        }
+
+        $order->load('driver.user');
+        return view('customer.rate-order', compact('order'));
+    }
+
+    public function submitRating(Request $request, Order $order)
+    {
+        // Check ownership
+        if ($order->customer_id !== Auth::id()) {
+            abort(403, 'Unauthorized access to order');
         }
 
         $request->validate([
             'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string|max:255',
+            'review' => 'nullable|string|max:500',
         ]);
 
-        $result = $this->orderService->rateOrder($order, $request->rating, $request->comment, 'customer');
+        // Check if order is completed
+        if ($order->status !== 'completed') {
+            return back()->with('error', 'Anda hanya dapat memberikan rating untuk pesanan yang sudah selesai.');
+        }
 
-        if ($result['success']) {
-            return back()->with('success', 'Rating berhasil diberikan.');
-        } else {
-            return back()->with('error', 'Gagal memberikan rating: ' . $result['error']);
+        // Check if already rated
+        $existingRating = Rating::where('order_id', $order->id)
+            ->where('rated_by', 'customer')
+            ->first();
+
+        if ($existingRating) {
+            return back()->with('error', 'Anda sudah memberikan rating untuk pesanan ini.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Create rating
+            $rating = Rating::create([
+                'order_id' => $order->id,
+                'customer_id' => $order->customer_id,
+                'driver_id' => $order->driver_id,
+                'rated_by' => 'customer',
+                'rating' => $request->rating,
+                'review' => $request->review,
+            ]);
+
+            // Update driver's average rating
+            if ($order->driver) {
+                $avgRating = Rating::where('driver_id', $order->driver_id)
+                    ->where('rated_by', 'customer')
+                    ->avg('rating');
+                
+                $order->driver->update(['rating' => round($avgRating, 2)]);
+            }
+
+            DB::commit();
+
+            Log::info('Customer rating submitted successfully', [
+                'order_id' => $order->id,
+                'customer_id' => Auth::id(),
+                'driver_id' => $order->driver_id,
+                'rating' => $request->rating
+            ]);
+
+            return redirect()->route('customer.orders.show', $order->id)
+                ->with('success', 'Terima kasih atas rating yang Anda berikan!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            Log::error('Rating submission failed', [
+                'order_id' => $order->id,
+                'customer_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()->with('error', 'Gagal memberikan rating. Silakan coba lagi.')
+                ->withInput();
         }
     }
+
+    
 
     public function findDrivers(Request $request)
     {

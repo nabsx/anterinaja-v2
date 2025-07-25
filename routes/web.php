@@ -49,7 +49,8 @@ Route::middleware(['auth', 'web'])->group(function () {
         Route::get('/orders/{order}', [CustomerDashboardController::class, 'orderDetail'])->name('customer.orders.show');
         Route::post('/orders', [CustomerDashboardController::class, 'createOrder'])->name('customer.orders.create');
         Route::patch('/orders/{order}/cancel', [CustomerDashboardController::class, 'cancelOrder'])->name('customer.orders.cancel');
-        Route::post('/orders/{order}/rate', [CustomerDashboardController::class, 'rateOrder'])->name('customer.orders.rate');
+        Route::get('/orders/{order}/rate', [CustomerDashboardController::class, 'showRatingForm'])->name('customer.orders.rate');
+        Route::post('/orders/{order}/rate', [CustomerDashboardController::class, 'submitRating'])->name('customer.orders.rate.submit');
         Route::get('/book-ride', [CustomerDashboardController::class, 'bookRide'])->name('customer.book');
         Route::get('/find-drivers', [CustomerDashboardController::class, 'findDrivers'])->name('customer.drivers');
     });

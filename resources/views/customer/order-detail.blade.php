@@ -242,6 +242,39 @@
             </div>
         @endif
 
+        <!-- Rating Section - Show existing rating if available -->
+        @if($order->status === 'completed')
+            @php
+                $customerRating = $order->ratings()->where('rated_by', 'customer')->first();
+            @endphp
+            
+            @if($customerRating)
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-800">
+                        <i class="fas fa-star mr-2 text-yellow-500"></i>Rating Anda
+                    </h3>
+                    <div class="bg-yellow-50 rounded-lg p-4">
+                        <div class="flex items-center mb-3">
+                            <div class="text-yellow-500 mr-3">
+                                @for($i = 1; $i <= 5; $i++)
+                                    @if($i <= $customerRating->rating)
+                                        <i class="fas fa-star"></i>
+                                    @else
+                                        <i class="far fa-star"></i>
+                                    @endif
+                                @endfor
+                            </div>
+                            <span class="font-semibold text-gray-800">{{ $customerRating->rating }}/5</span>
+                            <span class="text-sm text-gray-600 ml-2">• {{ $customerRating->created_at->format('d M Y') }}</span>
+                        </div>
+                        @if($customerRating->review)
+                            <p class="text-gray-700 italic">"{{ $customerRating->review }}"</p>
+                        @endif
+                    </div>
+                </div>
+            @endif
+        @endif
+
         <!-- Timeline -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h3 class="text-lg font-semibold mb-4 text-gray-800">
@@ -321,14 +354,12 @@
                     </form>
                 @endif
 
+                {{-- FIXED: Use GET request (link) to show rating form --}}
                 @if($order->canBeRated())
-                    <form action="{{ route('customer.orders.rate', $order->id) }}" method="POST" class="inline">
-                        @csrf
-                        <button type="submit" 
-                                class="bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center">
-                            <i class="fas fa-star mr-2"></i>Beri Rating
-                        </button>
-                    </form>
+                    <a href="{{ route('customer.orders.rate', $order->id) }}" 
+                       class="bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center">
+                        <i class="fas fa-star mr-2"></i>Beri Rating
+                    </a>
                 @endif
             </div>
         </div>

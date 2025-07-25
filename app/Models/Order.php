@@ -90,17 +90,16 @@ class Order extends Model
     // Accessors
     public function getStatusLabelAttribute()
     {
-        $statusLabels = [
+        $labels = [
             'pending' => 'Menunggu Driver',
-            'accepted' => 'Driver Diterima',
-            'driver_arrived' => 'Driver Tiba',
-            'picked_up' => 'Dijemput',
-            'in_progress' => 'Dalam Perjalanan',
+            'accepted' => 'Diterima Driver',
+            'driver_arrived' => 'Driver Sudah Sampai',
+            'picked_up' => 'Dalam Perjalanan',
             'completed' => 'Selesai',
-            'cancelled' => 'Dibatalkan'
+            'cancelled' => 'Dibatalkan',
         ];
 
-        return $statusLabels[$this->status] ?? $this->status;
+        return $labels[$this->status] ?? ucfirst(str_replace('_', ' ', $this->status));
     }
 
     public function getVehicleTypeLabelAttribute()
@@ -179,7 +178,28 @@ class Order extends Model
 
     public function canBeRated()
     {
-        return $this->status === 'completed' && !$this->ratings()->where('rated_by', 'customer')->exists();
+        return $this->status === 'completed' && 
+               !$this->ratings()->where('rated_by', 'customer')->exists();
+    }
+
+    public function hasBeenRatedByCustomer()
+    {
+        return $this->ratings()->where('rated_by', 'customer')->exists();
+    }
+
+    public function hasBeenRatedByDriver()
+    {
+        return $this->ratings()->where('rated_by', 'driver')->exists();
+    }
+
+    public function getCustomerRating()
+    {
+        return $this->ratings()->where('rated_by', 'customer')->first();
+    }
+
+    public function getDriverRating()
+    {
+        return $this->ratings()->where('rated_by', 'driver')->first();
     }
 
     public function isActive()

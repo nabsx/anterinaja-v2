@@ -155,7 +155,7 @@ class OrderService
                         $updateData['actual_fare'] = $additionalData['actual_fare'];
                     }
                     
-                    // FIXED LOGIC: Deduct platform commission from driver balance
+                    // FIXED LOGIC: Deduct platform commission from driver balance AND increment total_trips
                     if ($order->driver_id) {
                         $driver = Driver::find($order->driver_id);
                         if ($driver) {
@@ -167,14 +167,20 @@ class OrderService
                             
                             // Deduct platform commission from driver balance
                             $driver->balance -= $order->platform_commission;
-                            $driver->status = 'available'; // Make driver available again
+                            
+                            // INCREMENT TOTAL TRIPS - THIS WAS MISSING!
+                            $driver->total_trips += 1;
+                            
+                            // Make driver available again
+                            $driver->status = 'available';
                             $driver->save();
                             
-                            Log::info('Driver commission deducted', [
+                            Log::info('Order completed - driver updated', [
                                 'driver_id' => $driver->id,
                                 'order_id' => $order->id,
                                 'commission_deducted' => $order->platform_commission,
-                                'remaining_balance' => $driver->balance
+                                'remaining_balance' => $driver->balance,
+                                'total_trips' => $driver->total_trips
                             ]);
                         }
                     }
@@ -515,33 +521,77 @@ class OrderService
     /**
      * Rate order
      */
-    public function rateOrder($order, $rating, $comment, $ratedBy)
+    public function rateOrder(Order $order, $rating, $review = null, $ratedBy = 'customer')
     {
         try {
             DB::beginTransaction();
 
-            // Create rating record
-            $order->ratings()->create([
-                'rating' => $rating,
-                'comment' => $comment,
+            // Validate order is completed
+            if ($order->status !== 'completed') {
+                throw new \Exception('Can only rate completed orders');
+            }
+
+            // Check if already rated
+            $existingRating = Rating::where('order_id', $order->id)
+                ->where('rated_by', $ratedBy)
+                ->first();
+
+            if ($existingRating) {
+                throw new \Exception('Order has already been rated');
+            }
+
+            // Create rating
+            $ratingData = [
+                'order_id' => $order->id,
                 'rated_by' => $ratedBy,
-                'created_at' => now()
-            ]);
+                'rating' => $rating,
+                'review' => $review,
+            ];
+
+            if ($ratedBy === 'customer') {
+                $ratingData['customer_id'] = $order->customer_id;
+                $ratingData['driver_id'] = $order->driver_id;
+            } else {
+                $ratingData['driver_id'] = $order->driver_id;
+                $ratingData['customer_id'] = $order->customer_id;
+            }
+
+            $ratingRecord = Rating::create($ratingData);
+
+            // Update driver's average rating if rated by customer
+            if ($ratedBy === 'customer' && $order->driver) {
+                $avgRating = Rating::where('driver_id', $order->driver_id)
+                    ->where('rated_by', 'customer')
+                    ->avg('rating');
+                
+                $order->driver->update(['rating' => round($avgRating, 2)]);
+            }
 
             DB::commit();
 
+            Log::info('Order rated successfully', [
+                'order_id' => $order->id,
+                'rated_by' => $ratedBy,
+                'rating' => $rating
+            ]);
+
             return [
                 'success' => true,
-                'message' => 'Rating submitted successfully'
+                'data' => $ratingRecord
             ];
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Rating submission error: ' . $e->getMessage());
             
+            Log::error('Order rating failed', [
+                'order_id' => $order->id,
+                'rated_by' => $ratedBy,
+                'error' => $e->getMessage()
+            ]);
+
             return [
                 'success' => false,
-                'error' => 'Failed to submit rating'
+                'error' => $e->getMessage()
             ];
         }
     }
