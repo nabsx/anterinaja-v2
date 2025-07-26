@@ -7,9 +7,24 @@
     <div class="px-4 py-6 sm:px-0">
         <!-- Header -->
         <div class="bg-white overflow-hidden shadow rounded-lg mb-6">
+        @php
+                            // Coba ambil user login sekarang
+                            $user = auth()->user();
+                            $isDriver = isset($user->driver); // Cek apakah user punya relasi driver
+
+                            if ($isDriver) {
+                                $driver = $user->driver;
+                                $profilePhoto = $driver->documents->where('document_type', 'photo')->first();
+                                $profilePhotoUrl = $profilePhoto && $profilePhoto->document_path 
+                                    ? Storage::url($profilePhoto->document_path)
+                                    : 'https://ui-avatars.com/api/?name='.urlencode($user->name).'&color=7F9CF5&background=EBF4FF&size=128';
+                            } else {
+                                $profilePhotoUrl = 'https://ui-avatars.com/api/?name='.urlencode($user->name).'&color=7F9CF5&background=EBF4FF&size=128';
+                            }
+                        @endphp
             <div class="px-4 py-5 sm:p-6">
                 <div class="flex items-center">
-                    <img src="{{ $user->avatar_url }}" alt="Avatar" class="h-16 w-16 rounded-full">
+                    <img src="{{ $profilePhotoUrl }}" alt="Avatar" class="h-16 w-16 rounded-full">
                     <div class="ml-4">
                         <h1 class="text-2xl font-bold text-gray-900">Selamat datang, {{ $user->name }}!</h1>
                         <p class="text-gray-600">{{ $user->email }}</p>

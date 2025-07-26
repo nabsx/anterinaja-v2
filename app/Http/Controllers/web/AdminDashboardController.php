@@ -200,6 +200,28 @@ class AdminDashboardController extends Controller
         return redirect()->back()->with('success', 'Driver approved successfully');
     }
 
+    public function approveDocument($driverId, $documentId)
+    {
+        // Ambil document berdasarkan ID
+        $document = DriverDocument::where('driver_id', $driverId)->where('id', $documentId)->firstOrFail();
+
+        // Ubah statusnya jadi approved
+        $document->status = 'approved';
+        $document->save();
+
+        // Redirect balik dengan flash message
+        return redirect()->back()->with('success', 'Document approved successfully.');
+    }
+
+    public function rejectDocument($driverId, $documentId)
+    {
+        $document = DriverDocument::where('driver_id', $driverId)->where('id', $documentId)->firstOrFail();
+        $document->status = 'rejected';
+        $document->save();
+
+        return redirect()->back()->with('success', 'Document rejected successfully.');
+    }
+
     public function rejectDriver(Request $request, Driver $driver)
     {
         $request->validate([

@@ -111,7 +111,7 @@
                                 </svg>
                             </div>
                             <div>
-                                <h4 class="font-medium text-gray-900">Customer Anonim</h4>
+                                <h4 class="font-medium text-gray-900">Customer</h4>
                                 <p class="text-sm text-gray-600">{{ $rating->created_at->format('d M Y, H:i') }}</p>
                             </div>
                         </div>
@@ -136,21 +136,6 @@
                             <p class="text-gray-700 leading-relaxed">{{ $rating->review }}</p>
                         </div>
                     @endif
-
-                    <!-- Order Info (Anonymous) -->
-                    <div class="border-t pt-4">
-                        <div class="flex items-center text-sm text-gray-600">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                            <span>Perjalanan {{ number_format($rating->order->distance_km, 1) }} km</span>
-                            <span class="mx-2">•</span>
-                            <span>{{ $rating->order->vehicle_type === 'motorcycle' ? 'Motor' : 'Mobil' }}</span>
-                            <span class="mx-2">•</span>
-                            <span>{{ $rating->order->order_code }}</span>
-                        </div>
-                    </div>
 
                     <!-- Rating Helpful Actions -->
                     <div class="border-t pt-4 mt-4">

@@ -22,9 +22,24 @@
                     
                     <div class="flex items-center space-x-4">
                         @auth
+                        @php
+                            // Coba ambil user login sekarang
+                            $user = auth()->user();
+                            $isDriver = isset($user->driver); // Cek apakah user punya relasi driver
+
+                            if ($isDriver) {
+                                $driver = $user->driver;
+                                $profilePhoto = $driver->documents->where('document_type', 'photo')->first();
+                                $profilePhotoUrl = $profilePhoto && $profilePhoto->document_path 
+                                    ? Storage::url($profilePhoto->document_path)
+                                    : 'https://ui-avatars.com/api/?name='.urlencode($user->name).'&color=7F9CF5&background=EBF4FF&size=128';
+                            } else {
+                                $profilePhotoUrl = 'https://ui-avatars.com/api/?name='.urlencode($user->name).'&color=7F9CF5&background=EBF4FF&size=128';
+                            }
+                        @endphp
                             <div class="relative group">
                                 <button class="flex items-center space-x-2 text-gray-700 hover:text-blue-600">
-                                    <img src="{{ auth()->user()->avatar_url }}" alt="Avatar" class="w-8 h-8 rounded-full">
+                                    <img src="{{ $profilePhotoUrl }}" alt="Profile picture" class="w-8 h-8 rounded-full">
                                     <span>{{ auth()->user()->name }}</span>
                                     <i class="fas fa-chevron-down text-sm"></i>
                                 </button>

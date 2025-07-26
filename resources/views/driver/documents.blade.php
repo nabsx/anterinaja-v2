@@ -54,14 +54,18 @@
                         </div>
                     @endif
                     
-                    <form action="{{ route('driver.documents.upload') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <input type="hidden" name="document_type" value="ktp">
-                        <input type="file" name="document" accept="image/*,application/pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required>
-                        <button type="submit" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm">
-                            {{ $ktpDoc ? 'Ganti KTP' : 'Upload KTP' }}
-                        </button>
-                    </form>
+                    @if(!$driver->is_verified)
+                        <form action="{{ route('driver.documents.upload') }}" method="POST" enctype="multipart/form-data">
+                            @csrf
+                            <input type="hidden" name="document_type" value="photo">
+                            <input type="file" name="document" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required>
+                            <button type="submit" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm">
+                                {{ $photoDoc ? 'Ganti Foto' : 'Upload Foto' }}
+                            </button>
+                        </form>
+                    @else
+                        <p class="text-sm text-gray-500 mt-2 italic">Dokumen sudah diverifikasi, tidak dapat diubah.</p>
+                    @endif
                 </div>
 
                 <!-- SIM -->
@@ -80,14 +84,18 @@
                         </div>
                     @endif
                     
-                    <form action="{{ route('driver.documents.upload') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <input type="hidden" name="document_type" value="sim">
-                        <input type="file" name="document" accept="image/*,application/pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required>
-                        <button type="submit" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm">
-                            {{ $simDoc ? 'Ganti SIM' : 'Upload SIM' }}
-                        </button>
-                    </form>
+                    @if(!$driver->is_verified)
+                        <form action="{{ route('driver.documents.upload') }}" method="POST" enctype="multipart/form-data">
+                            @csrf
+                            <input type="hidden" name="document_type" value="photo">
+                            <input type="file" name="document" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required>
+                            <button type="submit" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm">
+                                {{ $photoDoc ? 'Ganti Foto' : 'Upload Foto' }}
+                            </button>
+                        </form>
+                    @else
+                        <p class="text-sm text-gray-500 mt-2 italic">Dokumen sudah diverifikasi, tidak dapat diubah.</p>
+                    @endif
                 </div>
 
                 <!-- STNK -->
@@ -106,14 +114,18 @@
                         </div>
                     @endif
                     
-                    <form action="{{ route('driver.documents.upload') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <input type="hidden" name="document_type" value="stnk">
-                        <input type="file" name="document" accept="image/*,application/pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required>
-                        <button type="submit" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm">
-                            {{ $stnkDoc ? 'Ganti STNK' : 'Upload STNK' }}
-                        </button>
-                    </form>
+                    @if(!$driver->is_verified)
+                        <form action="{{ route('driver.documents.upload') }}" method="POST" enctype="multipart/form-data">
+                            @csrf
+                            <input type="hidden" name="document_type" value="photo">
+                            <input type="file" name="document" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required>
+                            <button type="submit" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm">
+                                {{ $photoDoc ? 'Ganti Foto' : 'Upload Foto' }}
+                            </button>
+                        </form>
+                    @else
+                        <p class="text-sm text-gray-500 mt-2 italic">Dokumen sudah diverifikasi, tidak dapat diubah.</p>
+                    @endif
                 </div>
 
                 <!-- Foto Profile -->
@@ -132,14 +144,18 @@
                         </div>
                     @endif
                     
-                    <form action="{{ route('driver.documents.upload') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <input type="hidden" name="document_type" value="photo">
-                        <input type="file" name="document" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required>
-                        <button type="submit" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm">
-                            {{ $photoDoc ? 'Ganti Foto' : 'Upload Foto' }}
-                        </button>
-                    </form>
+                    @if(!$driver->is_verified)
+                        <form action="{{ route('driver.documents.upload') }}" method="POST" enctype="multipart/form-data">
+                            @csrf
+                            <input type="hidden" name="document_type" value="photo">
+                            <input type="file" name="document" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" required>
+                            <button type="submit" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm">
+                                {{ $photoDoc ? 'Ganti Foto' : 'Upload Foto' }}
+                            </button>
+                        </form>
+                    @else
+                        <p class="text-sm text-gray-500 mt-2 italic">Dokumen sudah diverifikasi, tidak dapat diubah.</p>
+                    @endif
                 </div>
             </div>
 

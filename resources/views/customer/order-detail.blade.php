@@ -276,93 +276,100 @@
         @endif
 
         <!-- Timeline -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h3 class="text-lg font-semibold mb-4 text-gray-800">
-                <i class="fas fa-history mr-2 text-purple-500"></i>Timeline Pesanan
-            </h3>
-            <div class="space-y-4">
-                <div class="flex items-center space-x-4">
-                    <div class="w-4 h-4 bg-blue-500 rounded-full flex-shrink-0"></div>
-                    <div class="flex-1">
-                        <p class="font-medium text-gray-900">Pesanan Dibuat</p>
-                        <p class="text-sm text-gray-600">{{ $order->created_at->format('d M Y, H:i') }}</p>
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Timeline</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <div class="w-3 h-3 bg-blue-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Pesanan Dibuat</p>
+                                <p class="text-xs text-gray-500">{{ $order->created_at->format('d M Y, H:i') }}</p>
+                            </div>
+                        </div>
+
+                        @if($order->accepted_at)
+                        <div class="flex items-start">
+                            <div class="w-3 h-3 bg-green-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Driver Menerima</p>
+                                <p class="text-xs text-gray-500">{{ $order->accepted_at->format('d M Y, H:i') }}</p>
+                            </div>
+                        </div>
+                        @endif
+
+                        @if($order->pickup_arrived_at || $order->status === 'driver_arrived')
+                        <div class="flex items-start">
+                            <div class="w-3 h-3 bg-purple-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Sampai di Pickup</p>
+                                <p class="text-xs text-gray-500">{{ ($order->pickup_arrived_at ?? now())->format('d M Y, H:i') }}</p>
+                            </div>
+                        </div>
+                        @endif
+
+                        @if($order->started_at || $order->status === 'picked_up')
+                        <div class="flex items-start">
+                            <div class="w-3 h-3 bg-indigo-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Perjalanan Dimulai</p>
+                                <p class="text-xs text-gray-500">{{ ($order->started_at ?? now())->format('d M Y, H:i') }}</p>
+                            </div>
+                        </div>
+                        @endif
+
+                        @if($order->completed_at)
+                        <div class="flex items-start">
+                            <div class="w-3 h-3 bg-green-600 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Pesanan Selesai</p>
+                                <p class="text-xs text-gray-500">{{ $order->completed_at->format('d M Y, H:i') }}</p>
+                            </div>
+                        </div>
+                        @endif
+
+                        @if($order->cancelled_at)
+                        <div class="flex items-start">
+                            <div class="w-3 h-3 bg-red-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">Pesanan Dibatalkan</p>
+                                <p class="text-xs text-gray-500">{{ $order->cancelled_at->format('d M Y, H:i') }}</p>
+                                @if($order->cancellation_reason)
+                                <p class="text-xs text-gray-600 mt-1">Alasan: {{ $order->cancellation_reason }}</p>
+                                @endif
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 </div>
-                
-                @if($order->accepted_at)
-                    <div class="flex items-center space-x-4">
-                        <div class="w-4 h-4 bg-yellow-500 rounded-full flex-shrink-0"></div>
-                        <div class="flex-1">
-                            <p class="font-medium text-gray-900">Diterima Driver</p>
-                            <p class="text-sm text-gray-600">{{ $order->accepted_at->format('d M Y, H:i') }}</p>
-                        </div>
-                    </div>
-                @endif
-                
-                @if($order->picked_up_at)
-                    <div class="flex items-center space-x-4">
-                        <div class="w-4 h-4 bg-purple-500 rounded-full flex-shrink-0"></div>
-                        <div class="flex-1">
-                            <p class="font-medium text-gray-900">Penjemputan</p>
-                            <p class="text-sm text-gray-600">{{ $order->picked_up_at->format('d M Y, H:i') }}</p>
-                        </div>
-                    </div>
-                @endif
-                
-                @if($order->completed_at)
-                    <div class="flex items-center space-x-4">
-                        <div class="w-4 h-4 bg-green-500 rounded-full flex-shrink-0"></div>
-                        <div class="flex-1">
-                            <p class="font-medium text-gray-900">Pesanan Selesai</p>
-                            <p class="text-sm text-gray-600">{{ $order->completed_at->format('d M Y, H:i') }}</p>
-                        </div>
-                    </div>
-                @endif
-
-                @if($order->cancelled_at)
-                    <div class="flex items-center space-x-4">
-                        <div class="w-4 h-4 bg-red-500 rounded-full flex-shrink-0"></div>
-                        <div class="flex-1">
-                            <p class="font-medium text-gray-900">Pesanan Dibatalkan</p>
-                            <p class="text-sm text-gray-600">{{ $order->cancelled_at->format('d M Y, H:i') }}</p>
-                            @if($order->cancellation_reason)
-                                <p class="text-sm text-red-600">Alasan: {{ $order->cancellation_reason }}</p>
-                            @endif
-                        </div>
-                    </div>
-                @endif
             </div>
         </div>
 
         <!-- Action Buttons -->
         <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex flex-wrap gap-3">
-                <a href="{{ route('customer.orders') }}" 
-                   class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center">
-                    <i class="fas fa-arrow-left mr-2"></i>Kembali ke Daftar Pesanan
-                </a>
-                
-                @if($order->canBeCancelled())
-                    <form method="POST" action="{{ route('customer.orders.cancel', $order->id) }}" class="inline">
-                        @csrf
-                        @method('PATCH')
-                        <button type="submit" 
-                                onclick="return confirm('Apakah Anda yakin ingin membatalkan pesanan ini?')"
-                                class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center">
-                            <i class="fas fa-times mr-2"></i>Batalkan Pesanan
-                        </button>
-                    </form>
-                @endif
+    <div class="flex justify-center flex-wrap gap-3">
+        <a href="{{ route('customer.orders') }}" 
+           class="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center">
+            <i class="fas fa-arrow-left mr-2"></i>Kembali ke Daftar Pesanan
+        </a>
+        
+        @if($order->canBeCancelled())
+            <form method="POST" action="{{ route('customer.orders.cancel', $order->id) }}" class="inline">
+                @csrf
+                @method('PATCH')
+                <button type="submit" 
+                        onclick="return confirm('Apakah Anda yakin ingin membatalkan pesanan ini?')"
+                        class="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center">
+                    <i class="fas fa-times mr-2"></i>Batalkan Pesanan
+                </button>
+            </form>
+        @endif
 
-                {{-- FIXED: Use GET request (link) to show rating form --}}
-                @if($order->canBeRated())
-                    <a href="{{ route('customer.orders.rate', $order->id) }}" 
-                       class="bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center">
-                        <i class="fas fa-star mr-2"></i>Beri Rating
-                    </a>
-                @endif
-            </div>
-        </div>
+        @if($order->canBeRated())
+            <a href="{{ route('customer.orders.rate', $order->id) }}" 
+               class="bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200 flex items-center">
+                <i class="fas fa-star mr-2"></i>Beri Rating
+            </a>
+        @endif
     </div>
 </div>
 @endsection
